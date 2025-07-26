@@ -9,6 +9,7 @@ const RemoteType = z.enum([
   "fut089",
   "fut091",
   "fut020",
+  "yellow_pop",
 ]);
 const Alias = z
   .object({
@@ -805,7 +806,7 @@ const endpoints = makeApi([
         name: "remoteType",
         type: "Path",
         schema: z
-          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020"])
+          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020", "yellow_pop"])
           .describe(
             "Type of remote to read a packet from.  If unspecified, will read packets from all remote types."
           ),
@@ -933,7 +934,7 @@ const endpoints = makeApi([
         name: "remoteType",
         type: "Path",
         schema: z
-          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020"])
+          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020", "yellow_pop"])
           .describe(
             "Type of remote to read a packet from.  If unspecified, will read packets from all remote types."
           ),
@@ -986,7 +987,7 @@ if &#x60;fmt&#x60; is set to &#x60;normalized&#x60;, the response will be in nor
         name: "remoteType",
         type: "Path",
         schema: z
-          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020"])
+          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020", "yellow_pop"])
           .describe(
             "Type of remote to read a packet from.  If unspecified, will read packets from all remote types."
           ),
@@ -1049,7 +1050,7 @@ if &#x60;fmt&#x60; is set to &#x60;normalized&#x60;, the response will be in nor
         name: "remoteType",
         type: "Path",
         schema: z
-          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020"])
+          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020", "yellow_pop"])
           .describe(
             "Type of remote to read a packet from.  If unspecified, will read packets from all remote types."
           ),
@@ -1084,7 +1085,7 @@ if &#x60;fmt&#x60; is set to &#x60;normalized&#x60;, the response will be in nor
         name: "remoteType",
         type: "Path",
         schema: z
-          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020"])
+          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020", "yellow_pop"])
           .describe(
             "Type of remote to read a packet from.  If unspecified, will read packets from all remote types."
           ),

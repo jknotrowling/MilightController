@@ -16,7 +16,8 @@ export const RemoteTypeDescriptions: Record<RemoteType, string> = {
     rgb: "Compatible with most RGB LED Strip Controllers.",
     fut089: "Compatible with most newer RGB + dual white bulbs and controllers.",
     fut091: "Compatible with most newer dual white bulbs and controllers.",
-    fut020: "Compatible with some RGB LED strip controllers."
+    fut020: "Compatible with some RGB LED strip controllers.",
+    yellow_pop: "Compatible with Yellow Pop LED neon signs."
 };
 
 export const RemoteTypeCapabilities: Record<RemoteType, LightCapabilities> = {
@@ -53,6 +54,11 @@ export const RemoteTypeCapabilities: Record<RemoteType, LightCapabilities> = {
     fut020: {
         brightness: true,
         color: true,
+        colorTemp: false
+    },
+    yellow_pop: {
+        brightness: true,
+        color: false,
         colorTemp: false
     }
 };

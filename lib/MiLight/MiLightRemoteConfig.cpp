@@ -11,7 +11,8 @@ const MiLightRemoteConfig* MiLightRemoteConfig::ALL_REMOTES[] = {
   &FUT098Config, // rgb
   &FUT089Config, // 8-group rgb+cct (b8, fut089)
   &FUT091Config,
-  &FUT020Config
+  &FUT020Config,
+  &YellowPopConfig
 };
 
 const size_t MiLightRemoteConfig::NUM_REMOTES = size(ALL_REMOTES);
@@ -104,5 +105,13 @@ const MiLightRemoteConfig FUT020Config(
   MiLightRadioConfig::ALL_CONFIGS[4],
   REMOTE_TYPE_FUT020,
   "fut020",
+  0
+);
+
+const MiLightRemoteConfig YellowPopConfig(
+  new YellowPopPacketFormatter(),
+  MiLightRadioConfig::ALL_CONFIGS[4],
+  REMOTE_TYPE_YELLOW_POP,
+  "yellow_pop",
   0
 );
