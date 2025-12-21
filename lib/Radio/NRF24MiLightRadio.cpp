@@ -2,7 +2,7 @@
 
 #include <PL1167_nRF24.h>
 #include <NRF24MiLightRadio.h>
-
+ 
 #define PACKET_ID(packet, packet_length) ( (packet[1] << 8) | packet[packet_length - 1] )
 
 NRF24MiLightRadio::NRF24MiLightRadio(
@@ -19,6 +19,9 @@ NRF24MiLightRadio::NRF24MiLightRadio(
 { }
 
 int NRF24MiLightRadio::begin() {
+  #ifdef IS_WT32_ETH01
+    SPI.begin(NRF_SPI_SCK, NRF_SPI_MISO, NRF_SPI_MOSI);   // Remapping of SPI-Pins
+  #endif
   int retval = _pl1167.open();
   if (retval < 0) {
     return retval;
