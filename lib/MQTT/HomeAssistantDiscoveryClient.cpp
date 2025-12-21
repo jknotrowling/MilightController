@@ -91,6 +91,7 @@ void HomeAssistantDiscoveryClient::addConfig(const char* alias, const BulbId& bu
   // These bulbs support switching between rgb/white, and have a "white_mode" command
   switch (bulbId.deviceType) {
     case REMOTE_TYPE_FUT089:
+    case REMOTE_TYPE_FUT100:
     case REMOTE_TYPE_RGB_CCT:
     case REMOTE_TYPE_RGBW:
       effects.add("white_mode");

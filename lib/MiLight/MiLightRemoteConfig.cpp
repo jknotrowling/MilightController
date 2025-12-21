@@ -9,9 +9,18 @@ const MiLightRemoteConfig* MiLightRemoteConfig::ALL_REMOTES[] = {
   &FUT007Config, // cct
   &FUT092Config, // rgb+cct
   &FUT098Config, // rgb
-  &FUT089Config, // 8-group rgb+cct (b8, fut089)
+  #ifdef USE_FUT100
+    &FUT100Config, // 100-group rgb+cct (fut100)
+  #else
+    &FUT089Config,
+  #endif
   &FUT091Config,
-  &FUT020Config
+  &FUT020Config,
+  #ifdef USE_FUT100
+    &FUT089Config
+  #else
+    &FUT100Config
+  #endif
 };
 
 const size_t MiLightRemoteConfig::NUM_REMOTES = size(ALL_REMOTES);
@@ -89,6 +98,14 @@ const MiLightRemoteConfig FUT089Config( //rgb+cct B8 / FUT089
   REMOTE_TYPE_FUT089,
   "fut089",
   8
+);
+
+const MiLightRemoteConfig FUT100Config( //rgb+cct FUT100
+  new FUT100PacketFormatter(),
+  MiLightRadioConfig::ALL_CONFIGS[2],
+  REMOTE_TYPE_FUT100,
+  "fut100",
+  100
 );
 
 const MiLightRemoteConfig FUT098Config( //rgb

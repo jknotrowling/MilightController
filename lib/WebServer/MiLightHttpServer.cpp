@@ -546,14 +546,17 @@ void MiLightHttpServer::handleUpdateGroupAlias(RequestContext& request) {
 }
 
 void MiLightHttpServer::handleUpdateGroup(RequestContext& request) {
+  Serial.println(F("--- HTTP REQUEST RECEIVED ---"));
+  Serial.print(F("Path: ")); 
+  Serial.println(request.server.uri());
   JsonObject reqObj = request.getJsonBody().as<JsonObject>();
 
   String _deviceIds = request.pathVariables.get(GroupStateFieldNames::DEVICE_ID);
   String _groupIds = request.pathVariables.get(GroupStateFieldNames::GROUP_ID);
   String _remoteTypes = request.pathVariables.get("type");
-  char deviceIds[_deviceIds.length()];
-  char groupIds[_groupIds.length()];
-  char remoteTypes[_remoteTypes.length()];
+  char deviceIds[_deviceIds.length() + 1];      // increase buffer for groupid > 8
+  char groupIds[_groupIds.length() + 1];        // increase buffer for groupid > 8
+  char remoteTypes[_remoteTypes.length() + 1];  // increase buffer for groupid > 8
   strcpy(remoteTypes, _remoteTypes.c_str());
   strcpy(groupIds, _groupIds.c_str());
   strcpy(deviceIds, _deviceIds.c_str());

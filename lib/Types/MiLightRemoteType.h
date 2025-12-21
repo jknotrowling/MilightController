@@ -7,8 +7,14 @@ enum MiLightRemoteType {
   REMOTE_TYPE_RGBW    = 0,
   REMOTE_TYPE_CCT     = 1,
   REMOTE_TYPE_RGB_CCT = 2,
-  REMOTE_TYPE_RGB     = 3,
-  REMOTE_TYPE_FUT089  = 4,
+  REMOTE_TYPE_RGB     = 3, 
+  #ifdef USE_FUT100
+    REMOTE_TYPE_FUT100  = 4,
+    REMOTE_TYPE_FUT089  = 7,
+  #else
+    REMOTE_TYPE_FUT100  = 7,
+    REMOTE_TYPE_FUT089  = 4,
+  #endif
   REMOTE_TYPE_FUT091  = 5,
   REMOTE_TYPE_FUT020  = 6
 };

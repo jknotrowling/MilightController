@@ -15,6 +15,7 @@ export const RemoteTypeDescriptions: Record<RemoteType, string> = {
     rgb_cct: "Compatible with FUT012, FUT013, FUT014, FUT015, FUT103, FUT104, FUT105, and many RGB/CCT LED Strip Controllers.",
     rgb: "Compatible with most RGB LED Strip Controllers.",
     fut089: "Compatible with most newer RGB + dual white bulbs and controllers.",
+    fut100: "Compatible with most newer RGB + dual white bulbs and controllers.",
     fut091: "Compatible with most newer dual white bulbs and controllers.",
     fut020: "Compatible with some RGB LED strip controllers."
 };
@@ -41,6 +42,11 @@ export const RemoteTypeCapabilities: Record<RemoteType, LightCapabilities> = {
         colorTemp: false
     },
     fut089: {
+        brightness: true,
+        color: true,
+        colorTemp: true
+    },
+    fut100: {
         brightness: true,
         color: true,
         colorTemp: true

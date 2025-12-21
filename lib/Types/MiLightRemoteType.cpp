@@ -5,6 +5,7 @@ static const char* REMOTE_NAME_RGBW    = "rgbw";
 static const char* REMOTE_NAME_CCT     = "cct";
 static const char* REMOTE_NAME_RGB_CCT = "rgb_cct";
 static const char* REMOTE_NAME_FUT089  = "fut089";
+static const char* REMOTE_NAME_FUT100  = "fut100";
 static const char* REMOTE_NAME_RGB     = "rgb";
 static const char* REMOTE_NAME_FUT091  = "fut091";
 static const char* REMOTE_NAME_FUT020  = "fut020";
@@ -26,6 +27,10 @@ const MiLightRemoteType MiLightRemoteTypeHelpers::remoteTypeFromString(const Str
     return REMOTE_TYPE_FUT089;
   }
 
+  if (type.equalsIgnoreCase(REMOTE_NAME_FUT100)) {
+    return REMOTE_TYPE_FUT100;
+  }
+  
   if (type.equalsIgnoreCase(REMOTE_NAME_RGB) || type.equalsIgnoreCase("fut098")) {
     return REMOTE_TYPE_RGB;
   }
@@ -54,6 +59,8 @@ const String MiLightRemoteTypeHelpers::remoteTypeToString(const MiLightRemoteTyp
       return REMOTE_NAME_RGB_CCT;
     case REMOTE_TYPE_FUT089:
       return REMOTE_NAME_FUT089;
+    case REMOTE_TYPE_FUT100:
+      return REMOTE_NAME_FUT100;
     case REMOTE_TYPE_RGB:
       return REMOTE_NAME_RGB;
     case REMOTE_TYPE_FUT091:
@@ -70,6 +77,7 @@ const String MiLightRemoteTypeHelpers::remoteTypeToString(const MiLightRemoteTyp
 const bool MiLightRemoteTypeHelpers::supportsRgbw(const MiLightRemoteType type) {
   switch (type) {
     case REMOTE_TYPE_FUT089:
+    case REMOTE_TYPE_FUT100:
     case REMOTE_TYPE_RGB_CCT:
     case REMOTE_TYPE_RGBW:
       return true;
@@ -81,6 +89,7 @@ const bool MiLightRemoteTypeHelpers::supportsRgbw(const MiLightRemoteType type) 
 const bool MiLightRemoteTypeHelpers::supportsRgb(const MiLightRemoteType type) {
   switch (type) {
     case REMOTE_TYPE_FUT089:
+    case REMOTE_TYPE_FUT100:
     case REMOTE_TYPE_RGB:
     case REMOTE_TYPE_RGB_CCT:
     case REMOTE_TYPE_RGBW:
@@ -94,6 +103,7 @@ const bool MiLightRemoteTypeHelpers::supportsColorTemp(const MiLightRemoteType t
   switch (type) {
     case REMOTE_TYPE_CCT:
     case REMOTE_TYPE_FUT089:
+    case REMOTE_TYPE_FUT100:
     case REMOTE_TYPE_FUT091:
     case REMOTE_TYPE_RGB_CCT:
       return true;

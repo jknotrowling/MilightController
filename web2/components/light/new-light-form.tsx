@@ -31,7 +31,7 @@ const schema = z.object({
     message:
       "Invalid device ID format. It should be a hexadecimal number starting with 0x or a decimal number.",
   }),
-  group_id: z.number().int().min(0).max(8),
+  group_id: z.number().int().min(0).max(100),
 });
 
 interface NewLightFormProps {
@@ -45,6 +45,8 @@ const getGroupCountForRemoteType = (
   switch (remoteType) {
     case schemas.RemoteType.Values.fut089:
       return 8;
+    case schemas.RemoteType.Values.fut100:
+      return 100;
     case schemas.RemoteType.Values.rgb:
       return 1;
     default:
@@ -151,6 +153,7 @@ export function NewLightForm({ onSubmit }: NewLightFormProps) {
               <FormLabel>Group ID</FormLabel>
               <FormControl>
                 <ToggleGroup
+                  className="flex-wrap justify-start"
                   type="single"
                   variant="outline"
                   value={field.value.toString()}
