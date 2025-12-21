@@ -309,10 +309,10 @@ void applySettings() {
   }
 
   // --- Netzwerk-config differentiation ---
-#ifdef IS_WT32_ETH01
-  ETH.setHostname(settings.hostname.c_str());
-  Serial.printf_P(PSTR("Ethernet Hostname set to: %s\n"), settings.hostname.c_str());
-#else
+  #ifdef IS_WT32_ETH01
+    ETH.setHostname(settings.hostname.c_str());
+    Serial.printf_P(PSTR("Ethernet Hostname set to: %s\n"), settings.hostname.c_str());
+  #else
   WiFi.hostname(settings.hostname);
   #ifdef ESP8266
     WiFiPhyMode_t wifiPhyMode;
@@ -347,7 +347,10 @@ bool shouldRestart() {
 }
 
 void wifiExtraSettingsChange() {
-  if (wifiStaticIP == NULL || wifiStaticIPNetmask == NULL) {
+  if (wifiManager == nullptr || wifiStaticIP == nullptr || 
+      wifiStaticIPNetmask == nullptr || wifiStaticIPGateway == nullptr || 
+      wifiMode == nullptr) {
+    Serial.println(F("WiFi settings change ignored (Ethernet mode or unitialized)"));
     return;
   }
 
@@ -355,6 +358,8 @@ void wifiExtraSettingsChange() {
   settings.wifiStaticIPNetmask = wifiStaticIPNetmask->getValue();
   settings.wifiStaticIPGateway = wifiStaticIPGateway->getValue();
   settings.wifiMode = Settings::wifiModeFromString(wifiMode->getValue());
+  
+  Serial.println(F("Saving WiFi settings..."));
   settings.save();
 
   delay(1000);
@@ -487,17 +492,22 @@ void setup() {
 
   wifiManager = new WiFiManager();
   
-  // Diese Zeilen sind wichtig für die Stabilität des WiFi-Portals:
   wifiManager->setBreakAfterConfig(true);
   wifiManager->setSaveConfigCallback(wifiExtraSettingsChange);
   wifiManager->setConfigPortalBlocking(false);
 
-  // Parameter initialisieren
   wifiStaticIP = new WiFiManagerParameter("staticIP", "Static IP", settings.wifiStaticIP.c_str(), MAX_IP_ADDR_LEN);
   wifiStaticIPNetmask = new WiFiManagerParameter("netmask", "Netmask", settings.wifiStaticIPNetmask.c_str(), MAX_IP_ADDR_LEN);
   wifiStaticIPGateway = new WiFiManagerParameter("gateway", "Gateway", settings.wifiStaticIPGateway.c_str(), MAX_IP_ADDR_LEN);
-  wifiMode = new WiFiManagerParameter("wifiMode", "WiFi Mode (b/g/n)", settings.wifiMode == WifiMode::B ? "b" : "g", 1);
 
+  const char* modeStr = "n";
+  if (settings.wifiMode == WifiMode::B) {
+    modeStr = "b";
+  } else if (settings.wifiMode == WifiMode::G) {
+    modeStr = "g";
+  }
+
+  wifiMode = new WiFiManagerParameter("wifiMode", "WiFi Mode (b/g/n)", modeStr, 1);
   wifiManager->addParameter(wifiStaticIP);
   wifiManager->addParameter(wifiStaticIPNetmask);
   wifiManager->addParameter(wifiStaticIPGateway);
