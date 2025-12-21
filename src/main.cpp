@@ -413,7 +413,7 @@ void postConnectSetup() {
   #ifdef IS_WT32_ETH01
     SSDP.setName("WT32 MiLight Ethernet Gateway");
   #else
-    SSDP.setName("ESP32 MiLight Gateway");
+    SSDP.setName("ESP8266 MiLight Gateway");
   #endif
   SSDP.setSerialNumber(getESPId());
   SSDP.setURL("/");
@@ -462,65 +462,76 @@ void setup() {
   #ifdef IS_WT32_ETH01
     Serial.println(F("WT32-ETH01: Powering on Ethernet PHY..."));
     pinMode(ETH_POWER_PIN, OUTPUT);
-    digitalWrite(ETH_POWER_PIN, HIGH); // PHY Power on
+    digitalWrite(ETH_POWER_PIN, HIGH); 
     delay(100);
-    Serial.println(F("WT32-ETH01 erkannt. Starte Ethernet..."));
-    // PHY_ADDR: 1, PHY_POWER: 16, MDC: 23, MDIO: 18, Type: LAN8720, Clock: GPIO0_IN
+    
     ETH.begin(1, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_PHY_LAN8720, ETH_CLOCK_GPIO0_IN);
     delay(1000);
+    
     applySettings();
     
     ledStatus = new LEDStatus(settings.ledPin);
     ledStatus->continuous(settings.ledModeOperating);
 
     if (!MDNS.begin("milight-hub")) { Serial.println(F("Error MDNS")); }
-
+    
     postConnectSetup();
-    
     wifiManager = nullptr; 
-    
     Serial.println(F("Ethernet Setup abgeschlossen."));
-#else
-  // --- Standard WiFi Pfad ---
-  ESPMH_SETUP_WIFI(settings);
-  applySettings();
 
-  ledStatus = new LEDStatus(settings.ledPin);
-  ledStatus->continuous(settings.ledModeWifiConfig);
+  #else
+    ESPMH_SETUP_WIFI(settings);
+    applySettings();
 
-  if (! MDNS.begin("milight-hub")) { Serial.println(F("Error setting up MDNS responder")); }
+    ledStatus = new LEDStatus(settings.ledPin);
+    ledStatus->continuous(settings.ledModeWifiConfig);
 
-  wifiManager = new WiFiManager();
-  
-  wifiManager->setBreakAfterConfig(true);
-  wifiManager->setSaveConfigCallback(wifiExtraSettingsChange);
-  wifiManager->setConfigPortalBlocking(false);
+    if (! MDNS.begin("milight-hub")) { Serial.println(F("Error setting up MDNS responder")); }
 
-  wifiStaticIP = new WiFiManagerParameter("staticIP", "Static IP", settings.wifiStaticIP.c_str(), MAX_IP_ADDR_LEN);
-  wifiStaticIPNetmask = new WiFiManagerParameter("netmask", "Netmask", settings.wifiStaticIPNetmask.c_str(), MAX_IP_ADDR_LEN);
-  wifiStaticIPGateway = new WiFiManagerParameter("gateway", "Gateway", settings.wifiStaticIPGateway.c_str(), MAX_IP_ADDR_LEN);
+    wifiManager = new WiFiManager();
+    wifiManager->setBreakAfterConfig(true);
+    wifiManager->setSaveConfigCallback(wifiExtraSettingsChange);
+    wifiManager->setConfigPortalBlocking(false);
+    wifiManager->setConnectTimeout(20);
+    wifiManager->setConnectRetries(5);
 
-  const char* modeStr = "n";
-  if (settings.wifiMode == WifiMode::B) {
-    modeStr = "b";
-  } else if (settings.wifiMode == WifiMode::G) {
-    modeStr = "g";
-  }
+    // Parameter Definitionen
+    wifiStaticIP = new WiFiManagerParameter("staticIP", "Static IP (Leave blank for dhcp)", settings.wifiStaticIP.c_str(), MAX_IP_ADDR_LEN);
+    wifiStaticIPNetmask = new WiFiManagerParameter("netmask", "Netmask (required if IP given)", settings.wifiStaticIPNetmask.c_str(), MAX_IP_ADDR_LEN);
+    wifiStaticIPGateway = new WiFiManagerParameter("gateway", "Default Gateway (optional)", settings.wifiStaticIPGateway.c_str(), MAX_IP_ADDR_LEN);
 
-  wifiMode = new WiFiManagerParameter("wifiMode", "WiFi Mode (b/g/n)", modeStr, 1);
-  wifiManager->addParameter(wifiStaticIP);
-  wifiManager->addParameter(wifiStaticIPNetmask);
-  wifiManager->addParameter(wifiStaticIPGateway);
-  wifiManager->addParameter(wifiMode);
+    const char* modeStr = (settings.wifiMode == WifiMode::B) ? "b" : (settings.wifiMode == WifiMode::G) ? "g" : "n";
+    wifiMode = new WiFiManagerParameter("wifiMode", "WiFi Mode (b/g/n)", modeStr, 1);
 
-  if (wifiManager->autoConnect(ssid.c_str(), "milightHub")) {
-      WiFi.mode(WIFI_STA);
-      postConnectSetup();
-  }
-#endif
+    wifiManager->addParameter(wifiStaticIP);
+    wifiManager->addParameter(wifiStaticIPNetmask);
+    wifiManager->addParameter(wifiStaticIPGateway);
+    wifiManager->addParameter(wifiMode);
+
+    if (settings.wifiStaticIP.length() > 0) {
+      IPAddress _ip, _subnet, _gw;
+      if (_ip.fromString(settings.wifiStaticIP)) {
+        _subnet.fromString(settings.wifiStaticIPNetmask);
+        _gw.fromString(settings.wifiStaticIPGateway);
+        wifiManager->setSTAStaticIPConfig(_ip, _gw, _subnet);
+      }
+    }
+
+    wifiManager->setConfigPortalTimeout(180);
+    wifiManager->setConfigPortalTimeoutCallback([]() {
+        ledStatus->continuous(settings.ledModeWifiFailed);
+        Serial.println(F("Wifi config portal timed out. Restarting..."));
+        delay(10000);
+        ESP.restart();
+    });
+
+    if (wifiManager->autoConnect(ssid.c_str(), "milightHub")) {
+        ledStatus->continuous(settings.ledModeOperating);
+        WiFi.mode(WIFI_STA);
+        postConnectSetup();
+    }
+  #endif
 }
-size_t i = 0;
-
 
 void loop() {
   ledStatus->handle();
@@ -530,23 +541,21 @@ void loop() {
     ESP.restart();
   }
 
-  // WiFiManager nur verarbeiten, wenn er existiert
   if (wifiManager) {
     wifiManager->process();
   }
 
-  // Netzwerk-Check: Entweder WiFi ODER Ethernet
   bool connected = false;
   #ifdef IS_WT32_ETH01
-    connected = (ETH.localIP()[0] != 0); // Wahr, wenn wir eine IP haben
+    connected = (ETH.localIP()[0] != 0);
   #else
     connected = (WiFi.getMode() == WIFI_STA && WiFi.isConnected());
   #endif
 
   if (connected) {
     postConnectSetup();
-
     httpServer->handleClient();
+    
     if (mqttClient) {
       mqttClient->handleClient();
       bulbStateUpdater->loop();
