@@ -259,10 +259,9 @@ void applySettings() {
 
   // --- WT32-ETH01 SPI Remapping ---
   #ifdef IS_WT32_ETH01
-    Serial.println(F("WT32-ETH01: Re-initializing SPI pins..."));
-    SPI.begin(NRF_SPI_SCK, NRF_SPI_MISO, NRF_SPI_MOSI, settings.csnPin);
+    Serial.println(F("WT32-ETH01: Initializing SPI Bus (HSPI)..."));
+    SPI.begin(NRF_SPI_SCK, NRF_SPI_MISO, NRF_SPI_MOSI); 
   #endif
-
   radioFactory = MiLightRadioFactory::fromSettings(settings);
 
   if (radioFactory == NULL) {
@@ -465,7 +464,7 @@ void setup() {
     digitalWrite(ETH_POWER_PIN, HIGH); 
     delay(100);
     
-    ETH.begin(1, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_PHY_LAN8720, ETH_CLOCK_GPIO0_IN);
+    ETH.begin(ETH_PHY_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_PHY_LAN8720, ETH_CLOCK_GPIO0_IN);
     delay(1000);
     
     applySettings();
