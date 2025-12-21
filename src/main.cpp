@@ -70,11 +70,7 @@ TransitionController transitions;
 
 std::vector<std::shared_ptr<MiLightUdpServer>> udpServers;
 
-/**
- * Set up UDP servers (both v5 and v6).  Clean up old ones if necessary.
- */
-
- /**
+ /*
  * Set up UDP servers (both v5 and v6). Clean up old ones if necessary.
  */
 void initMilightUdpServers() {
@@ -476,7 +472,7 @@ void setup() {
     
     postConnectSetup();
     wifiManager = nullptr; 
-    Serial.println(F("Ethernet Setup abgeschlossen."));
+    Serial.println(F("Ethernet Setup done"));
 
   #else
     ESPMH_SETUP_WIFI(settings);
