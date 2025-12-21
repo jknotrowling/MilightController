@@ -73,8 +73,20 @@ std::vector<std::shared_ptr<MiLightUdpServer>> udpServers;
 /**
  * Set up UDP servers (both v5 and v6).  Clean up old ones if necessary.
  */
+
+ /**
+ * Set up UDP servers (both v5 and v6). Clean up old ones if necessary.
+ */
 void initMilightUdpServers() {
-  if (! WiFi.isConnected()) {
+  bool isConnected = false;
+  #ifdef IS_WT32_ETH01
+    isConnected = (ETH.localIP()[0] != 0); 
+  #else
+    isConnected = WiFi.isConnected();
+  #endif
+
+  if (!isConnected) {
+    Serial.println(F("UDP Servers: No network connection. Skipping init."));
     return;
   }
 
@@ -95,7 +107,7 @@ void initMilightUdpServers() {
       Serial.println(config.protocolVersion);
     } else {
       udpServers.push_back(std::move(server));
-      udpServers[i]->begin();
+      udpServers.back()->begin(); 
     }
   }
 
