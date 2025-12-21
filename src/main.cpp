@@ -39,6 +39,10 @@
 #include <memory>
 #include "ProjectFS.h"
 
+#ifdef IS_WT32_ETH01
+  #include <ETH.h>
+#endif
+
 WiFiManager* wifiManager;
 // because of callbacks, these need to be in the higher scope :(
 WiFiManagerParameter* wifiStaticIP = NULL;
@@ -241,6 +245,12 @@ void applySettings() {
 
   transitions.setDefaultPeriod(settings.defaultTransitionPeriod);
 
+  // --- WT32-ETH01 SPI Remapping ---
+  #ifdef IS_WT32_ETH01
+    Serial.println(F("WT32-ETH01: Re-initializing SPI pins..."));
+    SPI.begin(NRF_SPI_SCK, NRF_SPI_MISO, NRF_SPI_MOSI, settings.csnPin);
+  #endif
+
   radioFactory = MiLightRadioFactory::fromSettings(settings);
 
   if (radioFactory == NULL) {
@@ -286,39 +296,33 @@ void applySettings() {
     ledStatus->continuous(settings.ledModeOperating);
   }
 
+  // --- Netzwerk-config differentiation ---
+#ifdef IS_WT32_ETH01
+  ETH.setHostname(settings.hostname.c_str());
+  Serial.printf_P(PSTR("Ethernet Hostname set to: %s\n"), settings.hostname.c_str());
+#else
   WiFi.hostname(settings.hostname);
-#ifdef ESP8266
-  WiFiPhyMode_t wifiPhyMode;
-switch (settings.wifiMode) {
-  case WifiMode::B:
-    wifiPhyMode = WIFI_PHY_MODE_11B;
-    break;
-  case WifiMode::G:
-    wifiPhyMode = WIFI_PHY_MODE_11G;
-    break;
-  default:
-  case WifiMode::N:
-    wifiPhyMode = WIFI_PHY_MODE_11N;
-    break;
-}
-  WiFi.setPhyMode(wifiPhyMode);
-#elif ESP32
-  switch (settings.wifiMode) {
-    case WifiMode::B:
-      esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B);
-      break;
-    case WifiMode::G:
-      esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11G);
-      break;
-    default:
-    case WifiMode::N:
-      esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11N);
-      break;
-  }
-  esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20);
+  #ifdef ESP8266
+    WiFiPhyMode_t wifiPhyMode;
+    switch (settings.wifiMode) {
+      case WifiMode::B: wifiPhyMode = WIFI_PHY_MODE_11B; break;
+      case WifiMode::G: wifiPhyMode = WIFI_PHY_MODE_11G; break;
+      default:
+      case WifiMode::N: wifiPhyMode = WIFI_PHY_MODE_11N; break;
+    }
+    WiFi.setPhyMode(wifiPhyMode);
+  #elif ESP32
+    switch (settings.wifiMode) {
+      case WifiMode::B: esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B); break;
+      case WifiMode::G: esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11G); break;
+      default:
+      case WifiMode::N: esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11N); break;
+    }
+    esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20);
+  #endif
 #endif
 }
-
+ 
 /**
  *
  */
@@ -366,18 +370,31 @@ void onGroupDeleted(const BulbId& id) {
 }
 
 bool initialized = false;
+
 void postConnectSetup() {
   if (initialized) return;
+  
+  #ifdef IS_WT32_ETH01
+    if (ETH.localIP()[0] == 0) return; 
+  #endif
+
   initialized = true;
 
-  delete wifiManager;
-  wifiManager = NULL;
+  // only delete if exists
+  if (wifiManager != NULL) {
+    delete wifiManager;
+    wifiManager = NULL;
+  }
 
   MDNS.addService("http", "tcp", 80);
 
   SSDP.setSchemaURL("description.xml");
   SSDP.setHTTPPort(80);
-  SSDP.setName("ESP8266 MiLight Gateway");
+  #ifdef IS_WT32_ETH01
+    SSDP.setName("WT32 MiLight Ethernet Gateway");
+  #else
+    SSDP.setName("ESP32 MiLight Gateway");
+  #endif
   SSDP.setSerialNumber(getESPId());
   SSDP.setURL("/");
   SSDP.setDeviceType("upnp:rootdevice");
@@ -393,7 +410,6 @@ void postConnectSetup() {
   transitions.addListener(
       [](const BulbId& bulbId, GroupStateField field, uint16_t value) {
           StaticJsonDocument<100> buffer;
-
           const char* fieldName = GroupStateFieldHelpers::getFieldName(field);
           buffer[fieldName] = value;
 
@@ -405,118 +421,67 @@ void postConnectSetup() {
   initMilightUdpServers();
 
   Serial.printf_P(PSTR("Setup complete (version %s)\n"), QUOTE(MILIGHT_HUB_VERSION));
+  #ifdef IS_WT32_ETH01
+    Serial.print(F("Ethernet IP: "));
+    Serial.println(ETH.localIP());
+  #endif
 }
 
 void setup() {
   Serial.begin(9600);
   String ssid = "ESP" + String(getESPId());
 
-  // load up our persistent settings from the file system
-  // ESP8266 doesn't support the formatOnFail parameter
   #ifdef ESP8266
-    if (! ProjectFS.begin()) {
-      Serial.println(F("Failed to mount file system"));
-    }
+    if (! ProjectFS.begin()) { Serial.println(F("Failed to mount file system")); }
   #else
-    if (! ProjectFS.begin(true)) {
-      Serial.println(F("Failed to mount file system"));
-    }
+    if (! ProjectFS.begin(true)) { Serial.println(F("Failed to mount file system")); }
   #endif
 
   Settings::load(settings);
-  ESPMH_SETUP_WIFI(settings);
-  applySettings();
 
-  // set up the LED status for wifi configuration
-  ledStatus = new LEDStatus(settings.ledPin);
-  ledStatus->continuous(settings.ledModeWifiConfig);
-
-  // start up the wifi manager
-  if (! MDNS.begin("milight-hub")) {
-    Serial.println(F("Error setting up MDNS responder"));
-  }
-
-  // Allows us to have static IP config in the captive portal. Yucky pointers to pointers, just to have the settings carry through
-  wifiManager = new WiFiManager();
-
-  // Setting breakAfterConfig to true causes wifiExtraSettingsChange to be called whenever config params are changed
-  // (even when connection fails or user is just changing settings and not network)
-  wifiManager->setBreakAfterConfig(true);
-  wifiManager->setSaveConfigCallback(wifiExtraSettingsChange);
-
-  wifiManager->setConfigPortalBlocking(false);
-  wifiManager->setConnectTimeout(20);
-  wifiManager->setConnectRetries(5);
-
-  wifiStaticIP = new WiFiManagerParameter(
-    "staticIP",
-    "Static IP (Leave blank for dhcp)",
-    settings.wifiStaticIP.c_str(),
-    MAX_IP_ADDR_LEN
-  );
-  wifiManager->addParameter(wifiStaticIP);
-
-  wifiStaticIPNetmask = new WiFiManagerParameter(
-    "netmask",
-    "Netmask (required if IP given)",
-    settings.wifiStaticIPNetmask.c_str(),
-    MAX_IP_ADDR_LEN
-  );
-  wifiManager->addParameter(wifiStaticIPNetmask);
-
-  wifiStaticIPGateway = new WiFiManagerParameter(
-    "gateway",
-    "Default Gateway (optional, only used if static IP)",
-    settings.wifiStaticIPGateway.c_str(),
-    MAX_IP_ADDR_LEN
-  );
-  wifiManager->addParameter(wifiStaticIPGateway);
-
-  wifiMode = new WiFiManagerParameter(
-    "wifiMode",
-    "WiFi Mode (b/g/n)",
-    settings.wifiMode == WifiMode::B ? "b" : settings.wifiMode == WifiMode::G ? "g" : "n",
-    1
-  );
-  wifiManager->addParameter(wifiMode);
-
-  // We have a saved static IP, let's try and use it.
-  if (settings.wifiStaticIP.length() > 0) {
-    Serial.printf_P(PSTR("We have a static IP: %s\n"), settings.wifiStaticIP.c_str());
-
-    IPAddress _ip, _subnet, _gw;
-    _ip.fromString(settings.wifiStaticIP);
-    _subnet.fromString(settings.wifiStaticIPNetmask);
-    _gw.fromString(settings.wifiStaticIPGateway);
-
-    wifiManager->setSTAStaticIPConfig(_ip,_gw,_subnet);
-  }
-
-  wifiManager->setConfigPortalTimeout(180);
-  wifiManager->setConfigPortalTimeoutCallback([]() {
-      ledStatus->continuous(settings.ledModeWifiFailed);
-
-      Serial.println(F("Wifi config portal timed out.  Restarting..."));
-      delay(10000);
-      ESP.restart();
-  });
-
-  if (wifiManager->autoConnect(ssid.c_str(), "milightHub")) {
-    // set LED mode for successful operation
+  #ifdef IS_WT32_ETH01
+    Serial.println(F("WT32-ETH01: Powering on Ethernet PHY..."));
+    pinMode(ETH_POWER_PIN, OUTPUT);
+    digitalWrite(ETH_POWER_PIN, HIGH); // PHY Power on
+    delay(100);
+    Serial.println(F("WT32-ETH01 erkannt. Starte Ethernet..."));
+    // PHY_ADDR: 1, PHY_POWER: 16, MDC: 23, MDIO: 18, Type: LAN8720, Clock: GPIO0_IN
+    ETH.begin(1, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_PHY_LAN8720, ETH_CLOCK_GPIO0_IN);
+    delay(1000);
+    applySettings();
+    
+    ledStatus = new LEDStatus(settings.ledPin);
     ledStatus->continuous(settings.ledModeOperating);
-    Serial.println(F("Wifi connected succesfully\n"));
 
-    // if the config portal was started, make sure to turn off the config AP
-    WiFi.mode(WIFI_STA);
+    if (!MDNS.begin("milight-hub")) { Serial.println(F("Error MDNS")); }
 
     postConnectSetup();
-  }
-}
+    
+    wifiManager = nullptr; 
+    
+    Serial.println(F("Ethernet Setup abgeschlossen."));
 
+  #else
+    ESPMH_SETUP_WIFI(settings);
+    applySettings();
+
+    ledStatus = new LEDStatus(settings.ledPin);
+    ledStatus->continuous(settings.ledModeWifiConfig);
+
+    if (! MDNS.begin("milight-hub")) { Serial.println(F("Error setting up MDNS responder")); }
+
+    wifiManager = new WiFiManager();
+    
+    if (wifiManager->autoConnect(ssid.c_str(), "milightHub")) {
+       WiFi.mode(WIFI_STA);
+       postConnectSetup();
+    }
+  #endif
+}
 size_t i = 0;
 
+
 void loop() {
-  // update LED with status
   ledStatus->handle();
 
   if (shouldRestart()) {
@@ -524,11 +489,20 @@ void loop() {
     ESP.restart();
   }
 
+  // WiFiManager nur verarbeiten, wenn er existiert
   if (wifiManager) {
     wifiManager->process();
   }
 
-  if (WiFi.getMode() == WIFI_STA && WiFi.isConnected()) {
+  // Netzwerk-Check: Entweder WiFi ODER Ethernet
+  bool connected = false;
+  #ifdef IS_WT32_ETH01
+    connected = (ETH.localIP()[0] != 0); // Wahr, wenn wir eine IP haben
+  #else
+    connected = (WiFi.getMode() == WIFI_STA && WiFi.isConnected());
+  #endif
+
+  if (connected) {
     postConnectSetup();
 
     httpServer->handleClient();
@@ -546,10 +520,8 @@ void loop() {
     }
 
     handleListen();
-
     stateStore->limitedFlush();
     packetSender->loop();
-
     transitions.loop();
   }
 }
