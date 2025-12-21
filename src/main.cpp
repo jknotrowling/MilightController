@@ -335,13 +335,16 @@ bool shouldRestart() {
 }
 
 void wifiExtraSettingsChange() {
+  if (wifiStaticIP == NULL || wifiStaticIPNetmask == NULL) {
+    return;
+  }
+
   settings.wifiStaticIP = wifiStaticIP->getValue();
   settings.wifiStaticIPNetmask = wifiStaticIPNetmask->getValue();
   settings.wifiStaticIPGateway = wifiStaticIPGateway->getValue();
   settings.wifiMode = Settings::wifiModeFromString(wifiMode->getValue());
   settings.save();
 
-  // Restart the device
   delay(1000);
   ESP.restart();
 }
@@ -460,23 +463,39 @@ void setup() {
     wifiManager = nullptr; 
     
     Serial.println(F("Ethernet Setup abgeschlossen."));
+#else
+  // --- Standard WiFi Pfad ---
+  ESPMH_SETUP_WIFI(settings);
+  applySettings();
 
-  #else
-    ESPMH_SETUP_WIFI(settings);
-    applySettings();
+  ledStatus = new LEDStatus(settings.ledPin);
+  ledStatus->continuous(settings.ledModeWifiConfig);
 
-    ledStatus = new LEDStatus(settings.ledPin);
-    ledStatus->continuous(settings.ledModeWifiConfig);
+  if (! MDNS.begin("milight-hub")) { Serial.println(F("Error setting up MDNS responder")); }
 
-    if (! MDNS.begin("milight-hub")) { Serial.println(F("Error setting up MDNS responder")); }
+  wifiManager = new WiFiManager();
+  
+  // Diese Zeilen sind wichtig für die Stabilität des WiFi-Portals:
+  wifiManager->setBreakAfterConfig(true);
+  wifiManager->setSaveConfigCallback(wifiExtraSettingsChange);
+  wifiManager->setConfigPortalBlocking(false);
 
-    wifiManager = new WiFiManager();
-    
-    if (wifiManager->autoConnect(ssid.c_str(), "milightHub")) {
-       WiFi.mode(WIFI_STA);
-       postConnectSetup();
-    }
-  #endif
+  // Parameter initialisieren
+  wifiStaticIP = new WiFiManagerParameter("staticIP", "Static IP", settings.wifiStaticIP.c_str(), MAX_IP_ADDR_LEN);
+  wifiStaticIPNetmask = new WiFiManagerParameter("netmask", "Netmask", settings.wifiStaticIPNetmask.c_str(), MAX_IP_ADDR_LEN);
+  wifiStaticIPGateway = new WiFiManagerParameter("gateway", "Gateway", settings.wifiStaticIPGateway.c_str(), MAX_IP_ADDR_LEN);
+  wifiMode = new WiFiManagerParameter("wifiMode", "WiFi Mode (b/g/n)", settings.wifiMode == WifiMode::B ? "b" : "g", 1);
+
+  wifiManager->addParameter(wifiStaticIP);
+  wifiManager->addParameter(wifiStaticIPNetmask);
+  wifiManager->addParameter(wifiStaticIPGateway);
+  wifiManager->addParameter(wifiMode);
+
+  if (wifiManager->autoConnect(ssid.c_str(), "milightHub")) {
+      WiFi.mode(WIFI_STA);
+      postConnectSetup();
+  }
+#endif
 }
 size_t i = 0;
 
