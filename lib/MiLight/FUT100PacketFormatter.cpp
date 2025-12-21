@@ -4,36 +4,33 @@
 #include <MiLightCommands.h>
 
 void FUT100PacketFormatter::updateStatus(MiLightStatus status, uint8_t groupId) {
-Serial.printf("FUT100 Debug: UpdateStatus Group %d, Status %d\n", groupId, status);  //DEBUG
   this->groupId = groupId;
 
   if (groupId <= 8) {
-    // Gruppe 0-8: Nutzt Kommando 0x01
-    // ON: 0-8, OFF: 9-17 (0x09 - 0x11)
+    // Groups 0-8: Standard V2 logic
     uint8_t arg = groupId + (status == OFF ? 9 : 0);
-    command(0x01, arg);
+    command(FUT100_ON_G_LOW, arg);
   } else {
-    // Gruppe 9-100: Nutzt Kommando 0x08
-    // G9 ON = 0, G9 OFF = 1, G10 ON = 2...
+    // Groups 9-100: Extended FUT100 logic
     uint8_t arg = ((groupId - 9) * 2) + (status == ON ? 0 : 1);
-    command(0x08, arg);
+    command(FUT100_ON_G_HIGH, arg);
   }
 }
 
 void FUT100PacketFormatter::modeSpeedDown() {
-  command(0x01, 0x13); // FUT100_MODE_SPEED_DOWN
+  command(FUT100_ON_G_LOW, FUT100_MODE_SPEED_DOWN);
 }
 
 void FUT100PacketFormatter::modeSpeedUp() {
-  command(0x01, 0x12); // FUT100_MODE_SPEED_UP
+  command(FUT100_ON_G_LOW, FUT100_MODE_SPEED_UP);
 }
 
 void FUT100PacketFormatter::updateMode(uint8_t mode) {
-  command(0x06, mode); // FUT100_MODE
+  command(FUT100_MODE, mode);
 }
 
 void FUT100PacketFormatter::updateBrightness(uint8_t brightness) {
-  command(0x05, brightness); // FUT100_BRIGHTNESS
+  command(FUT100_BRIGHTNESS, brightness);
 }
 
 void FUT100PacketFormatter::updateHue(uint16_t value) {
@@ -42,7 +39,7 @@ void FUT100PacketFormatter::updateHue(uint16_t value) {
 }
 
 void FUT100PacketFormatter::updateColorRaw(uint8_t value) {
-  command(0x02, value); // FUT100_COLOR
+  command(FUT100_COLOR, value);
 }
 
 void FUT100PacketFormatter::updateTemperature(uint8_t value) {
@@ -56,7 +53,7 @@ void FUT100PacketFormatter::updateTemperature(uint8_t value) {
     }
   }
 
-  command(0x07, 100 - value); // KELVIN
+  command(FUT100_KELVIN, 100 - value);
 
   if (ourState != NULL && (settings->enableAutomaticModeSwitching) && (originalBulbMode != BulbMode::BULB_MODE_WHITE)) {
     switchMode(*ourState, originalBulbMode);
@@ -75,7 +72,7 @@ void FUT100PacketFormatter::updateSaturation(uint8_t value) {
     updateHue(ourState->getHue());
   }
 
-  command(0x07, 100 - value); // SATURATION
+  command(FUT100_SATURATION, 100 - value);
 
   if (ourState != NULL && (settings->enableAutomaticModeSwitching) && (originalBulbMode != BulbMode::BULB_MODE_COLOR)) {
     switchMode(*ourState, originalBulbMode);
@@ -83,24 +80,26 @@ void FUT100PacketFormatter::updateSaturation(uint8_t value) {
 }
 
 void FUT100PacketFormatter::updateColorWhite() {
-  command(0x01, 0x14); // FUT100_WHITE_MODE
+  command(FUT100_ON_G_LOW, FUT100_WHITE_MODE);
 }
 
 void FUT100PacketFormatter::enableNightMode() {
   if (groupId <= 8) {
-    // Standard V2 Nachtmodus für G0-G8
-    // Nutzt das "OFF" Argument der jeweiligen Gruppe (groupId + 9)
     uint8_t arg = groupId + 9; 
-    command(0x01 | 0x80, arg);
+    command(FUT100_ON_G_LOW | 0x80, arg);
   } else {
-    // Nachtmodus für G9-G100
-    // Basierend auf der FUT100 Logik: OFF-Argument für G9-G100 + High Bit
     uint8_t arg = ((groupId - 9) * 2) + 1;
-    command(0x08 | 0x80, arg);
+    command(FUT100_ON_G_HIGH | 0x80, arg);
   }
 }
 
 BulbId FUT100PacketFormatter::parsePacket(const uint8_t *packet, JsonObject result) {
+  if (stateStore == NULL) {
+    Serial.println(F("ERROR: stateStore not set. Prepare was not called! **THIS IS A BUG**"));
+    BulbId fakeId(0, 0, REMOTE_TYPE_FUT100);
+    return fakeId;
+  }
+
   uint8_t packetCopy[V2_PACKET_LEN];
   memcpy(packetCopy, packet, V2_PACKET_LEN);
   V2RFEncoding::decodeV2Packet(packetCopy);
@@ -111,18 +110,21 @@ BulbId FUT100PacketFormatter::parsePacket(const uint8_t *packet, JsonObject resu
     REMOTE_TYPE_FUT100
   );
 
-  uint8_t cmd = (packetCopy[V2_COMMAND_INDEX] & 0x7F);
+  uint8_t rawCmd = packetCopy[V2_COMMAND_INDEX];
+  uint8_t cmd = (rawCmd & 0x7F); 
   uint8_t arg = packetCopy[V2_ARGUMENT_INDEX];
+  bool isNightMode = (rawCmd & 0x80) == 0x80;
 
-  // G0-G8 (Kommando 0x01) - Nutzt exakt die FUT100 Parse-Logik
-  if (cmd == 0x01) {
-    if ((packetCopy[V2_COMMAND_INDEX] & 0x80) == 0x80) {
+  // Groups 0-8 logic
+  if (cmd == FUT100_ON_G_LOW) {
+    if (isNightMode) {
       result[GroupStateFieldNames::COMMAND] = MiLightCommandNames::NIGHT_MODE;
-    } else if (arg == 0x13) {
+      if (arg >= 9 && arg <= 17) bulbId.groupId = arg - 9;
+    } else if (arg == FUT100_MODE_SPEED_DOWN) {
       result[GroupStateFieldNames::COMMAND] = MiLightCommandNames::MODE_SPEED_DOWN;
-    } else if (arg == 0x12) {
+    } else if (arg == FUT100_MODE_SPEED_UP) {
       result[GroupStateFieldNames::COMMAND] = MiLightCommandNames::MODE_SPEED_UP;
-    } else if (arg == 0x14) {
+    } else if (arg == FUT100_WHITE_MODE) {
       result[GroupStateFieldNames::COMMAND] = MiLightCommandNames::SET_WHITE;
     } else if (arg <= 8) { 
       result[GroupStateFieldNames::STATE] = "ON";
@@ -132,25 +134,32 @@ BulbId FUT100PacketFormatter::parsePacket(const uint8_t *packet, JsonObject resu
       bulbId.groupId = arg - 9;
     }
   } 
-  // G9-G100 (Kommando 0x08) - Die neue FUT100 Parse-Logik
-  else if (cmd == 0x08) {
-    result[GroupStateFieldNames::STATE] = ((arg % 2) == 0) ? "ON" : "OFF";
+  // Groups 9-100 logic
+  else if (cmd == FUT100_ON_G_HIGH) {
     bulbId.groupId = (arg / 2) + 9;
+    if (isNightMode) {
+      result[GroupStateFieldNames::COMMAND] = MiLightCommandNames::NIGHT_MODE;
+    } else {
+      result[GroupStateFieldNames::STATE] = ((arg % 2) == 0) ? "ON" : "OFF";
+    }
   } 
-  // Restliche Befehle (Farbe, Helligkeit etc. sind bei FUT100 und FUT100 identisch)
-  else if (cmd == 0x02) {
+  else if (cmd == FUT100_COLOR) {
     result[GroupStateFieldNames::HUE] = Units::rescale<uint16_t, uint16_t>(arg, 360, 255.0);
-  } else if (cmd == 0x05) {
+  } else if (cmd == FUT100_BRIGHTNESS) {
     result[GroupStateFieldNames::BRIGHTNESS] = Units::rescale<uint8_t, uint8_t>(constrain(arg, 0, 100), 255, 100);
-  } else if (cmd == 0x07) {
+  } else if (cmd == FUT100_KELVIN) { 
     const GroupState* state = stateStore->get(bulbId);
     if (state != NULL && state->getBulbMode() == BULB_MODE_COLOR) {
       result[GroupStateFieldNames::SATURATION] = 100 - constrain(arg, 0, 100);
     } else {
       result[GroupStateFieldNames::COLOR_TEMP] = Units::whiteValToMireds(100 - arg, 100);
     }
-  } else if (cmd == 0x06) {
+  } else if (cmd == FUT100_MODE) {
     result[GroupStateFieldNames::MODE] = arg;
+  } else {
+    // Fallback for unknown buttons
+    result["button_id"] = cmd;
+    result["argument"] = arg;
   }
 
   return bulbId;

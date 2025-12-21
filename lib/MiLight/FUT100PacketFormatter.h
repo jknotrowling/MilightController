@@ -3,16 +3,15 @@
 
 #include <V2PacketFormatter.h>
 
-#define FUT100_COLOR_OFFSET 0
-#define FUT100_GROUP_ON_OFF_COMMAND 0x08 // Das spezielle Kommando für G9-G100
 
 enum MiLightFUT100Command {
-  FUT100_ON         = 0x01,
+  FUT100_ON_G_LOW   = 0x01,
   FUT100_COLOR      = 0x02,
   FUT100_BRIGHTNESS = 0x05,
   FUT100_MODE       = 0x06,
   FUT100_KELVIN     = 0x07,
-  FUT100_SATURATION = 0x07
+  FUT100_SATURATION = 0x07,
+  FUT100_ON_G_HIGH  = 0x08
 };
 
 enum MiLightFUT100Arguments {

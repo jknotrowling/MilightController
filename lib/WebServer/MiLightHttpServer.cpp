@@ -546,9 +546,6 @@ void MiLightHttpServer::handleUpdateGroupAlias(RequestContext& request) {
 }
 
 void MiLightHttpServer::handleUpdateGroup(RequestContext& request) {
-  Serial.println(F("--- HTTP REQUEST RECEIVED ---"));
-  Serial.print(F("Path: ")); 
-  Serial.println(request.server.uri());
   JsonObject reqObj = request.getJsonBody().as<JsonObject>();
 
   String _deviceIds = request.pathVariables.get(GroupStateFieldNames::DEVICE_ID);
