@@ -4,7 +4,9 @@
 #include <MqttClient.h>
 #include <ESPId.h>
 #include <map>
-
+#ifdef IS_WT32_ETH01
+  #include <ETH.h>
+#endif
 class HomeAssistantDiscoveryClient {
 public:
   HomeAssistantDiscoveryClient(Settings& settings, MqttClient* mqttClient);

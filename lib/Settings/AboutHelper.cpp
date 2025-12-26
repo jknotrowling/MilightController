@@ -36,7 +36,13 @@ String AboutHelper::generateAboutString(bool abbreviated) {
 void AboutHelper::generateAboutObject(JsonDocument &obj, bool abbreviated) {
   obj[FPSTR("firmware")] = QUOTE(FIRMWARE_NAME);
   obj[FPSTR("version")] = QUOTE(MILIGHT_HUB_VERSION);
+
+#ifdef IS_WT32_ETH01
+  obj[FPSTR("ip_address")] = ETH.localIP().toString();
+#else
   obj[FPSTR("ip_address")] = WiFi.localIP().toString();
+#endif
+
 #ifdef ESP8266
   obj[FPSTR("reset_reason")] = ESP.getResetReason();
 #elif ESP32

@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
-
+#ifdef IS_WT32_ETH01
+  #include <ETH.h>
+#endif
 #ifndef _ABOUT_STRING_HELPER_H
 #define _ABOUT_STRING_HELPER_H
 

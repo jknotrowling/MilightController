@@ -2,7 +2,7 @@
 
 #include <PL1167_nRF24.h>
 #include <NRF24MiLightRadio.h>
-
+ 
 #define PACKET_ID(packet, packet_length) ( (packet[1] << 8) | packet[packet_length - 1] )
 
 NRF24MiLightRadio::NRF24MiLightRadio(
