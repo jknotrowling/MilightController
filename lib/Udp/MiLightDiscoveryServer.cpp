@@ -65,7 +65,11 @@ void MiLightDiscoveryServer::handleDiscovery(uint8_t version) {
       continue;
     }
 
+  #ifdef IS_WT32_ETH01
+    IPAddress addr = ETH.localIP();
+  #else
     IPAddress addr = WiFi.localIP();
+  #endif
     char* ptr = buffer;
     ptr += sprintf_P(
       buffer,
