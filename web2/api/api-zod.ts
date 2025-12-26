@@ -7,6 +7,7 @@ const RemoteType = z.enum([
   "rgb_cct",
   "rgb",
   "fut089",
+  "fut100",
   "fut091",
   "fut020",
 ]);
@@ -72,7 +73,7 @@ const GatewayListItem = z
 const BulbId = z
   .object({
     device_id: z.number().int().gte(0).lte(65536),
-    group_id: z.number().int().gte(0).lte(8),
+    group_id: z.number().int().gte(0).lte(100),
     device_type: RemoteType,
   })
   .passthrough();
@@ -805,7 +806,7 @@ const endpoints = makeApi([
         name: "remoteType",
         type: "Path",
         schema: z
-          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020"])
+          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut100", "fut091", "fut020"])
           .describe(
             "Type of remote to read a packet from.  If unspecified, will read packets from all remote types."
           ),
@@ -933,7 +934,7 @@ const endpoints = makeApi([
         name: "remoteType",
         type: "Path",
         schema: z
-          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020"])
+          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut100", "fut091", "fut020"])
           .describe(
             "Type of remote to read a packet from.  If unspecified, will read packets from all remote types."
           ),
@@ -945,9 +946,9 @@ const endpoints = makeApi([
           .number()
           .int()
           .gte(0)
-          .lte(8)
+          .lte(100)
           .describe(
-            "Group ID.  Should be 0-8, depending on remote type.  Group 0 is a 'wildcard' group.  All bulbs paired with the same device ID will respond to commands sent to Group 0."
+            "Group ID.  Should be 0-100, depending on remote type.  Group 0 is a 'wildcard' group.  All bulbs paired with the same device ID will respond to commands sent to Group 0."
           ),
       },
       {
@@ -986,7 +987,7 @@ if &#x60;fmt&#x60; is set to &#x60;normalized&#x60;, the response will be in nor
         name: "remoteType",
         type: "Path",
         schema: z
-          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020"])
+          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut100", "fut091", "fut020"])
           .describe(
             "Type of remote to read a packet from.  If unspecified, will read packets from all remote types."
           ),
@@ -998,9 +999,9 @@ if &#x60;fmt&#x60; is set to &#x60;normalized&#x60;, the response will be in nor
           .number()
           .int()
           .gte(0)
-          .lte(8)
+          .lte(100)
           .describe(
-            "Group ID.  Should be 0-8, depending on remote type.  Group 0 is a 'wildcard' group.  All bulbs paired with the same device ID will respond to commands sent to Group 0."
+            "Group ID.  Should be 0-100, depending on remote type.  Group 0 is a 'wildcard' group.  All bulbs paired with the same device ID will respond to commands sent to Group 0."
           ),
       },
       {
@@ -1049,7 +1050,7 @@ if &#x60;fmt&#x60; is set to &#x60;normalized&#x60;, the response will be in nor
         name: "remoteType",
         type: "Path",
         schema: z
-          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020"])
+          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut100", "fut091", "fut020"])
           .describe(
             "Type of remote to read a packet from.  If unspecified, will read packets from all remote types."
           ),
@@ -1061,9 +1062,9 @@ if &#x60;fmt&#x60; is set to &#x60;normalized&#x60;, the response will be in nor
           .number()
           .int()
           .gte(0)
-          .lte(8)
+          .lte(100)
           .describe(
-            "Group ID.  Should be 0-8, depending on remote type.  Group 0 is a 'wildcard' group.  All bulbs paired with the same device ID will respond to commands sent to Group 0."
+            "Group ID.  Should be 0-100, depending on remote type.  Group 0 is a 'wildcard' group.  All bulbs paired with the same device ID will respond to commands sent to Group 0."
           ),
       },
     ],
@@ -1084,7 +1085,7 @@ if &#x60;fmt&#x60; is set to &#x60;normalized&#x60;, the response will be in nor
         name: "remoteType",
         type: "Path",
         schema: z
-          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut091", "fut020"])
+          .enum(["rgbw", "cct", "rgb_cct", "rgb", "fut089", "fut100", "fut091", "fut020"])
           .describe(
             "Type of remote to read a packet from.  If unspecified, will read packets from all remote types."
           ),

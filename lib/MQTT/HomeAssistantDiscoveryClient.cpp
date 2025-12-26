@@ -52,7 +52,11 @@ void HomeAssistantDiscoveryClient::addConfig(const char* alias, const BulbId& bu
 
   // URL to the device
   char deviceUrl[23];
+#ifdef IS_WT32_ETH01
+  snprintf_P(deviceUrl, sizeof(deviceUrl), PSTR("http://%s"), ETH.localIP().toString().c_str());
+#else
   snprintf_P(deviceUrl, sizeof(deviceUrl), PSTR("http://%s"), WiFi.localIP().toString().c_str());
+#endif
 
   config[F("dev_cla")] = F("light");
   config[F("schema")] = F("json");
@@ -91,6 +95,7 @@ void HomeAssistantDiscoveryClient::addConfig(const char* alias, const BulbId& bu
   // These bulbs support switching between rgb/white, and have a "white_mode" command
   switch (bulbId.deviceType) {
     case REMOTE_TYPE_FUT089:
+    case REMOTE_TYPE_FUT100:
     case REMOTE_TYPE_RGB_CCT:
     case REMOTE_TYPE_RGBW:
       effects.add("white_mode");

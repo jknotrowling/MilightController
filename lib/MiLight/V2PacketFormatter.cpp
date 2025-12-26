@@ -47,9 +47,12 @@ void V2PacketFormatter::command(uint8_t command, uint8_t arg) {
   currentPacket[V2_ARGUMENT_INDEX] = arg;
 }
 
+
 void V2PacketFormatter::updateStatus(MiLightStatus status, uint8_t groupId) {
-  command(0x01, GROUP_COMMAND_ARG(status, groupId, numGroups));
+  this->groupId = groupId;
+  command(0x01, groupCommandArg(status, groupId));
 }
+
 
 void V2PacketFormatter::unpair() {
   for (size_t i = 0; i < 5; i++) {

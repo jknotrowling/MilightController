@@ -545,6 +545,26 @@ RSpec.describe 'State' do
       end
     end
   end
+  
+  context 'FUT100' do
+    it 'should keep enough group 0 state to interpret ambiguous kelvin/saturation commands as saturation commands when in color mode' do
+      group0_params = @id_params.merge(type: 'FUT100', group_id: 0)
+
+      (0..100).each do |group_id|
+        @client.delete_state(group0_params.merge(group_id: group_id))
+      end
+
+      @client.patch_state({'status' => 'ON', 'hue' => 0}, group0_params)
+      @client.patch_state({'saturation' => 100}, group0_params)
+
+      (0..100).each do |group_id|
+        state = @client.get_state(group0_params.merge(group_id: group_id))
+        expect(state['bulb_mode']).to eq('color')
+        expect(state['saturation']).to eq(100)
+        expect(state['hue']).to eq(0)
+      end
+    end
+  end
 
   context 'fut020' do
     it 'should support fut020 commands' do

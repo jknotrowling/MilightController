@@ -1089,6 +1089,7 @@ components:
       - "rgb_cct"
       - "rgb"
       - "fut089"
+      - "fut100"
       - "fut091"
       - "fut020"
       example: rgb_cct
