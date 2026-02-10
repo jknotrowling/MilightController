@@ -1,5 +1,7 @@
 import React from "react";
 import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import Wheel from "@uiw/react-color-wheel";
 import { hsvaToRgba, rgbaToHsva } from "@uiw/color-convert";
 import { Sun, Moon, Palette } from "lucide-react";
@@ -42,6 +44,18 @@ export function LightControl({
     const rgba = hsvaToRgba(color.hsva);
     updateState({
       color: { r: rgba.r, g: rgba.g, b: rgba.b },
+    });
+    updateState({ color_mode: schemas.ColorMode.Values.rgb });
+  };
+
+  const handleRgbChange = (channel: "r" | "g" | "b", value: number) => {
+    if (isNaN(value)) value = 0;
+    const clampedValue = Math.max(0, Math.min(255, value));
+
+    const currentColor = state.color || { r: 0, g: 0, b: 0 };
+
+    updateState({
+      color: { ...currentColor, [channel]: clampedValue },
     });
     updateState({ color_mode: schemas.ColorMode.Values.rgb });
   };
@@ -116,13 +130,63 @@ export function LightControl({
               <div className="flex items-center">
                 <label className="text-sm font-medium ml-2">Color</label>
               </div>
-              <div className="mt-2 flex justify-center">
+              <div className="mt-2 flex flex-col items-center">
                 <Wheel
                   width={150}
                   height={150}
                   color={convertedColor}
                   onChange={handleColorChange}
                 />
+                <div className="flex space-x-2 mt-4">
+                  <div className="flex flex-col items-center">
+                    <Label htmlFor="r" className="mb-1 text-xs">
+                      R
+                    </Label>
+                    <Input
+                      id="r"
+                      type="number"
+                      min={0}
+                      max={255}
+                      className="w-16 text-center"
+                      value={state.color?.r ?? 0}
+                      onChange={(e) =>
+                        handleRgbChange("r", parseInt(e.target.value))
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Label htmlFor="g" className="mb-1 text-xs">
+                      G
+                    </Label>
+                    <Input
+                      id="g"
+                      type="number"
+                      min={0}
+                      max={255}
+                      className="w-16 text-center"
+                      value={state.color?.g ?? 0}
+                      onChange={(e) =>
+                        handleRgbChange("g", parseInt(e.target.value))
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Label htmlFor="b" className="mb-1 text-xs">
+                      B
+                    </Label>
+                    <Input
+                      id="b"
+                      type="number"
+                      min={0}
+                      max={255}
+                      className="w-16 text-center"
+                      value={state.color?.b ?? 0}
+                      onChange={(e) =>
+                        handleRgbChange("b", parseInt(e.target.value))
+                      }
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
