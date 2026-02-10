@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,9 +38,24 @@ export function LightControl({
     updateState({ color_mode: schemas.ColorMode.Values.color_temp });
   };
 
+  const isInteracting = useRef(false);
+
+  useEffect(() => {
+    const handleUp = () => {
+      isInteracting.current = false;
+    };
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("touchend", handleUp);
+    return () => {
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("touchend", handleUp);
+    };
+  }, []);
+
   const handleColorChange = (color: {
     hsva: { h: number; s: number; v: number; a: number };
   }) => {
+    if (!isInteracting.current) return;
     const rgba = hsvaToRgba(color.hsva);
     updateState({
       color: { r: rgba.r, g: rgba.g, b: rgba.b },
@@ -131,12 +146,21 @@ export function LightControl({
                 <label className="text-sm font-medium ml-2">Color</label>
               </div>
               <div className="mt-2 flex flex-col items-center">
-                <Wheel
-                  width={150}
-                  height={150}
-                  color={convertedColor}
-                  onChange={handleColorChange}
-                />
+                <div
+                  onPointerDownCapture={() => {
+                    isInteracting.current = true;
+                  }}
+                  onTouchStartCapture={() => {
+                    isInteracting.current = true;
+                  }}
+                >
+                  <Wheel
+                    width={150}
+                    height={150}
+                    color={convertedColor}
+                    onChange={handleColorChange}
+                  />
+                </div>
                 <div className="flex space-x-2 mt-4">
                   <div className="flex flex-col items-center">
                     <Label htmlFor="r" className="mb-1 text-xs">
