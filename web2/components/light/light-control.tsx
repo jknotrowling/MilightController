@@ -1,9 +1,7 @@
-import React, { useRef, useEffect } from "react";
+import React from "react";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Wheel from "@uiw/react-color-wheel";
-import { hsvaToRgba, rgbaToHsva } from "@uiw/color-convert";
 import { Sun, Moon, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -38,30 +36,6 @@ export function LightControl({
     updateState({ color_mode: schemas.ColorMode.Values.color_temp });
   };
 
-  const isInteracting = useRef(false);
-
-  useEffect(() => {
-    const handleUp = () => {
-      isInteracting.current = false;
-    };
-    window.addEventListener("pointerup", handleUp);
-    window.addEventListener("touchend", handleUp);
-    return () => {
-      window.removeEventListener("pointerup", handleUp);
-      window.removeEventListener("touchend", handleUp);
-    };
-  }, []);
-
-  const handleColorChange = (color: {
-    hsva: { h: number; s: number; v: number; a: number };
-  }) => {
-    if (!isInteracting.current) return;
-    const rgba = hsvaToRgba(color.hsva);
-    updateState({
-      color: { r: rgba.r, g: rgba.g, b: rgba.b },
-    });
-    updateState({ color_mode: schemas.ColorMode.Values.rgb });
-  };
 
   const handleRgbChange = (channel: "r" | "g" | "b", value: number) => {
     if (isNaN(value)) value = 0;
@@ -78,10 +52,6 @@ export function LightControl({
   const sendCommand = (command: z.infer<typeof schemas.GroupStateCommand>) => {
     updateState({ command: command });
   };
-
-  const convertedColor = rgbaToHsva(
-    state.color ? { ...state.color, a: 1 } : { r: 255, g: 255, b: 255, a: 1 }
-  );
 
   const handleModeChange = (value: z.infer<typeof schemas.ColorMode>) => {
     updateState({ color_mode: value });
@@ -146,21 +116,6 @@ export function LightControl({
                 <label className="text-sm font-medium ml-2">Color</label>
               </div>
               <div className="mt-2 flex flex-col items-center">
-                <div
-                  onPointerDownCapture={() => {
-                    isInteracting.current = true;
-                  }}
-                  onTouchStartCapture={() => {
-                    isInteracting.current = true;
-                  }}
-                >
-                  <Wheel
-                    width={150}
-                    height={150}
-                    color={convertedColor}
-                    onChange={handleColorChange}
-                  />
-                </div>
                 <div className="flex space-x-2 mt-4">
                   <div className="flex flex-col items-center">
                     <Label htmlFor="r" className="mb-1 text-xs">
