@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sun, Moon, Palette } from "lucide-react";
+import { Sun, Moon, Palette, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { RemoteTypeCapabilities } from "./remote-data";
@@ -36,15 +36,23 @@ export function LightControl({
     updateState({ color_mode: schemas.ColorMode.Values.color_temp });
   };
 
+  const [localColor, setLocalColor] = useState(state.color || { r: 0, g: 0, b: 0 });
 
-  const handleRgbChange = (channel: "r" | "g" | "b", value: number) => {
-    if (isNaN(value)) value = 0;
-    const clampedValue = Math.max(0, Math.min(255, value));
+  useEffect(() => {
+    setLocalColor(state.color || { r: 0, g: 0, b: 0 });
+  }, [state.color]);
 
-    const currentColor = state.color || { r: 0, g: 0, b: 0 };
+  const handleRgbChange = (channel: "r" | "g" | "b", value: string) => {
+    let intValue = parseInt(value);
+    if (isNaN(intValue)) intValue = 0;
+    const clampedValue = Math.max(0, Math.min(255, intValue));
 
+    setLocalColor((prev) => ({ ...prev, [channel]: clampedValue }));
+  };
+
+  const handleSetColor = () => {
     updateState({
-      color: { ...currentColor, [channel]: clampedValue },
+      color: localColor,
     });
     updateState({ color_mode: schemas.ColorMode.Values.rgb });
   };
@@ -116,7 +124,7 @@ export function LightControl({
                 <label className="text-sm font-medium ml-2">Color</label>
               </div>
               <div className="mt-2 flex flex-col items-center">
-                <div className="flex space-x-2 mt-4">
+                <div className="flex space-x-2 mt-4 items-end">
                   <div className="flex flex-col items-center">
                     <Label htmlFor="r" className="mb-1 text-xs">
                       R
@@ -127,10 +135,8 @@ export function LightControl({
                       min={0}
                       max={255}
                       className="w-16 text-center"
-                      value={state.color?.r ?? 0}
-                      onChange={(e) =>
-                        handleRgbChange("r", parseInt(e.target.value))
-                      }
+                      value={localColor.r}
+                      onChange={(e) => handleRgbChange("r", e.target.value)}
                     />
                   </div>
                   <div className="flex flex-col items-center">
@@ -143,10 +149,8 @@ export function LightControl({
                       min={0}
                       max={255}
                       className="w-16 text-center"
-                      value={state.color?.g ?? 0}
-                      onChange={(e) =>
-                        handleRgbChange("g", parseInt(e.target.value))
-                      }
+                      value={localColor.g}
+                      onChange={(e) => handleRgbChange("g", e.target.value)}
                     />
                   </div>
                   <div className="flex flex-col items-center">
@@ -159,12 +163,13 @@ export function LightControl({
                       min={0}
                       max={255}
                       className="w-16 text-center"
-                      value={state.color?.b ?? 0}
-                      onChange={(e) =>
-                        handleRgbChange("b", parseInt(e.target.value))
-                      }
+                      value={localColor.b}
+                      onChange={(e) => handleRgbChange("b", e.target.value)}
                     />
                   </div>
+                  <Button size="icon" variant="outline" onClick={handleSetColor}>
+                    <Check size={16} />
+                  </Button>
                 </div>
               </div>
             </div>
