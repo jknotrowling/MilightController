@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,9 +37,12 @@ export function LightControl({
   };
 
   const [localColor, setLocalColor] = useState(state.color || { r: 0, g: 0, b: 0 });
+  const isEditing = useRef(false);
 
   useEffect(() => {
-    setLocalColor(state.color || { r: 0, g: 0, b: 0 });
+    if (!isEditing.current) {
+      setLocalColor(state.color || { r: 0, g: 0, b: 0 });
+    }
   }, [state.color]);
 
   const handleRgbChange = (channel: "r" | "g" | "b", value: string) => {
@@ -137,6 +140,8 @@ export function LightControl({
                       className="w-16 text-center"
                       value={localColor.r}
                       onChange={(e) => handleRgbChange("r", e.target.value)}
+                      onFocus={() => { isEditing.current = true; }}
+                      onBlur={() => { isEditing.current = false; }}
                     />
                   </div>
                   <div className="flex flex-col items-center">
@@ -151,6 +156,8 @@ export function LightControl({
                       className="w-16 text-center"
                       value={localColor.g}
                       onChange={(e) => handleRgbChange("g", e.target.value)}
+                      onFocus={() => { isEditing.current = true; }}
+                      onBlur={() => { isEditing.current = false; }}
                     />
                   </div>
                   <div className="flex flex-col items-center">
@@ -165,6 +172,8 @@ export function LightControl({
                       className="w-16 text-center"
                       value={localColor.b}
                       onChange={(e) => handleRgbChange("b", e.target.value)}
+                      onFocus={() => { isEditing.current = true; }}
+                      onBlur={() => { isEditing.current = false; }}
                     />
                   </div>
                   <Button size="icon" variant="outline" onClick={handleSetColor}>
