@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sun, Moon, Palette, Check } from "lucide-react";
+import { Sun, Moon, Palette, Check, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { RemoteTypeCapabilities } from "./remote-data";
@@ -56,6 +56,15 @@ export function LightControl({
   const handleSetColor = () => {
     updateState({
       color: localColor,
+    });
+    updateState({ color_mode: schemas.ColorMode.Values.rgb });
+  };
+
+  const handleSetPreset = () => {
+    const presetColor = { r: 27, g: 150, b: 129 };
+    setLocalColor(presetColor);
+    updateState({
+      color: presetColor,
     });
     updateState({ color_mode: schemas.ColorMode.Values.rgb });
   };
@@ -178,6 +187,9 @@ export function LightControl({
                   </div>
                   <Button size="icon" variant="outline" onClick={handleSetColor}>
                     <Check size={16} />
+                  </Button>
+                  <Button size="icon" variant="outline" onClick={handleSetPreset}>
+                    <Star size={16} />
                   </Button>
                 </div>
               </div>
