@@ -144,6 +144,9 @@ namespace SettingsKeys {
   static const char GROUP_STATE_FIELDS[] PROGMEM = "group_state_fields";
   static const char GROUP_ID_ALIASES[] PROGMEM = "group_id_aliases";
   static const char IGNORED_LISTEN_PROTOCOLS[] PROGMEM = "ignored_listen_protocols";
+  static const char DEFAULT_REMOTE_ID[] PROGMEM = "default_remote_id";
+  static const char DEFAULT_REMOTE_TYPE[] PROGMEM = "default_remote_type";
+  static const char DEFAULT_REMOTE_GROUP_ID[] PROGMEM = "default_remote_group_id";
 }
 
 class Settings {
@@ -190,7 +193,10 @@ public:
     defaultTransitionPeriod(500),
     groupIdAliasNextId(0),
     _autoRestartPeriod(0),
-    ignoredListenProtocols(0) // All protocols enabled by default
+    ignoredListenProtocols(0), // All protocols enabled by default
+    defaultRemoteDeviceId(0),
+    defaultRemoteDeviceType(REMOTE_TYPE_RGB_CCT),
+    defaultRemoteGroupId(1)
   {
   }
 
@@ -274,6 +280,10 @@ public:
   uint8_t ignoredListenProtocols; // Bit mask of ignored protocols in order of MiLightRadioConfig::ALL_CONFIGS.
   // Save the ignored protocols, so if one is added later it will be enabled by default
   static_assert(ListenProtocolHelpers::numProtocols() <= sizeof(ignoredListenProtocols) * 8, "Listen protocol bitmask needs to be extended");
+
+  uint16_t defaultRemoteDeviceId;
+  MiLightRemoteType defaultRemoteDeviceType;
+  uint8_t defaultRemoteGroupId;
 
   static WifiMode wifiModeFromString(const String& mode);
   static String wifiModeToString(WifiMode mode);

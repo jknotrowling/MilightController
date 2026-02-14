@@ -51,6 +51,9 @@ static LEDStatus *ledStatus;
 
 Settings settings;
 
+#define FLASH_BUTTON_PIN 0
+unsigned long lastButtonPress = 0;
+
 MiLightClient* milightClient = NULL;
 RadioSwitchboard* radios = nullptr;
 PacketSender* packetSender = nullptr;
@@ -431,6 +434,8 @@ void setup() {
   Serial.begin(9600);
   String ssid = "ESP" + String(getESPId());
 
+  pinMode(FLASH_BUTTON_PIN, INPUT_PULLUP);
+
   // load up our persistent settings from the file system
   // ESP8266 doesn't support the formatOnFail parameter
   #ifdef ESP8266
@@ -535,9 +540,34 @@ void setup() {
 
 size_t i = 0;
 
+void handleButton() {
+  if (digitalRead(FLASH_BUTTON_PIN) == LOW) {
+    if (millis() - lastButtonPress > 500) { // Debounce 500ms
+      Serial.println(F("Flash button pressed - sending default teal color"));
+
+      StaticJsonDocument<200> buffer;
+      buffer["color"]["r"] = 27;
+      buffer["color"]["g"] = 150;
+      buffer["color"]["b"] = 129;
+
+      if (milightClient) {
+        milightClient->prepare(settings.defaultRemoteDeviceType, settings.defaultRemoteDeviceId, settings.defaultRemoteGroupId);
+        milightClient->update(buffer.as<JsonObject>());
+      }
+
+      lastButtonPress = millis();
+    }
+  } else {
+    // Reset timer if button released, though debouncing above handles basic repeats.
+    // If we want to allow rapid clicks but prevent bounce, the above is simple enough.
+  }
+}
+
 void loop() {
   // update LED with status
   ledStatus->handle();
+
+  handleButton();
 
   if (shouldRestart()) {
     Serial.println(F("Auto-restart triggered. Restarting..."));

@@ -109,6 +109,13 @@ void Settings::patch(JsonObject parsedSettings) {
   this->setIfPresent(parsedSettings, FPSTR(SettingsKeys::HOME_ASSISTANT_DISCOVERY_PREFIX), homeAssistantDiscoveryPrefix);
   this->setIfPresent(parsedSettings, FPSTR(SettingsKeys::DEFAULT_TRANSITION_PERIOD), defaultTransitionPeriod);
 
+  this->setIfPresent(parsedSettings, FPSTR(SettingsKeys::DEFAULT_REMOTE_ID), defaultRemoteDeviceId);
+  this->setIfPresent(parsedSettings, FPSTR(SettingsKeys::DEFAULT_REMOTE_GROUP_ID), defaultRemoteGroupId);
+
+  if (parsedSettings.containsKey(FPSTR(SettingsKeys::DEFAULT_REMOTE_TYPE))) {
+    this->defaultRemoteDeviceType = MiLightRemoteTypeHelpers::remoteTypeFromString(parsedSettings[FPSTR(SettingsKeys::DEFAULT_REMOTE_TYPE)]);
+  }
+
   if (parsedSettings.containsKey(FPSTR(SettingsKeys::WIFI_MODE))) {
     this->wifiMode = wifiModeFromString(parsedSettings[FPSTR(SettingsKeys::WIFI_MODE)]);
   }
@@ -363,6 +370,9 @@ void Settings::serialize(Print& stream, const bool prettyPrint) const {
   root[FPSTR(SettingsKeys::WIFI_MODE)] = wifiModeToString(this->wifiMode);
   root[FPSTR(SettingsKeys::DEFAULT_TRANSITION_PERIOD)] = this->defaultTransitionPeriod;
   
+  root[FPSTR(SettingsKeys::DEFAULT_REMOTE_ID)] = this->defaultRemoteDeviceId;
+  root[FPSTR(SettingsKeys::DEFAULT_REMOTE_TYPE)] = MiLightRemoteTypeHelpers::remoteTypeToString(this->defaultRemoteDeviceType);
+  root[FPSTR(SettingsKeys::DEFAULT_REMOTE_GROUP_ID)] = this->defaultRemoteGroupId;
 
   JsonArray channelArr = root.createNestedArray(FPSTR(SettingsKeys::RF24_CHANNELS));
   JsonHelpers::vectorToJsonArr<RF24Channel, String>(channelArr, rf24Channels, RF24ChannelHelpers::nameFromValue);
