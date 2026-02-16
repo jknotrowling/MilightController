@@ -33,22 +33,13 @@ export function LightControl({
   bulbId,
 }: LightControlProps) {
   const [settings, setSettings] = useState<z.infer<typeof schemas.Settings> | null>(null);
-  const [hue, setHue] = useState(0);
-  const [sat, setSat] = useState(0);
-  const [val, setVal] = useState(0);
+
+  // Local state for RGB inputs
+  const [localColor, setLocalColor] = useState({ r: 0, g: 0, b: 0 });
 
   useEffect(() => {
     api.getSettings().then(setSettings);
   }, []);
-
-  const handleBrightnessChange = (value: number[]) => {
-    updateState({ level: value[0] });
-  };
-
-  const handleColorTempChange = (value: number[]) => {
-    updateState({ kelvin: value[0] });
-    updateState({ color_mode: schemas.ColorMode.Values.color_temp });
-  };
 
   const isInteracting = useRef(false);
 
@@ -64,42 +55,48 @@ export function LightControl({
     };
   }, []);
 
+  // Sync local color with state color when not interacting
   useEffect(() => {
     if (!isInteracting.current && state.color) {
-      const hsva = rgbaToHsva({ ...state.color, a: 1 });
-      setHue(Math.round(hsva.h));
-      setSat(Math.round(hsva.s));
-      setVal(Math.round(hsva.v));
+      setLocalColor({
+        r: state.color.r || 0,
+        g: state.color.g || 0,
+        b: state.color.b || 0,
+      });
     }
   }, [state.color]);
+
+  const handleBrightnessChange = (value: number[]) => {
+    updateState({ level: value[0] });
+  };
+
+  const handleColorTempChange = (value: number[]) => {
+    updateState({ kelvin: value[0] });
+    updateState({ color_mode: schemas.ColorMode.Values.color_temp });
+  };
 
   const handleColorChange = (color: {
     hsva: { h: number; s: number; v: number; a: number };
   }) => {
     if (!isInteracting.current) return;
     const rgba = hsvaToRgba(color.hsva);
+    const newColor = { r: rgba.r, g: rgba.g, b: rgba.b };
+    setLocalColor(newColor); // Update local inputs
     updateState({
-      color: { r: rgba.r, g: rgba.g, b: rgba.b },
+      color: newColor,
     });
     updateState({ color_mode: schemas.ColorMode.Values.rgb });
   };
 
-  const handleRgbChange = (channel: "r" | "g" | "b", value: number) => {
+  const handleRgbInputChange = (channel: "r" | "g" | "b", value: number) => {
     if (isNaN(value)) value = 0;
     const clampedValue = Math.max(0, Math.min(255, value));
-
-    const currentColor = state.color || { r: 0, g: 0, b: 0 };
-
-    updateState({
-      color: { ...currentColor, [channel]: clampedValue },
-    });
-    updateState({ color_mode: schemas.ColorMode.Values.rgb });
+    setLocalColor((prev) => ({ ...prev, [channel]: clampedValue }));
   };
 
-  const handleInternalColorSubmit = () => {
-    const rgba = hsvaToRgba({ h: hue, s: sat, v: val, a: 1 });
+  const handleRgbSubmit = () => {
     updateState({
-      color: { r: rgba.r, g: rgba.g, b: rgba.b },
+      color: localColor,
     });
     updateState({ color_mode: schemas.ColorMode.Values.rgb });
   };
@@ -229,7 +226,8 @@ export function LightControl({
                     onChange={handleColorChange}
                   />
                 </div>
-                <div className="flex space-x-2 mt-4">
+
+                <div className="flex space-x-2 mt-4 items-end">
                   <div className="flex flex-col items-center">
                     <Label htmlFor="r" className="mb-1 text-xs">
                       R
@@ -240,9 +238,9 @@ export function LightControl({
                       min={0}
                       max={255}
                       className="w-16 text-center"
-                      value={state.color?.r ?? 0}
+                      value={localColor.r}
                       onChange={(e) =>
-                        handleRgbChange("r", parseInt(e.target.value))
+                        handleRgbInputChange("r", parseInt(e.target.value))
                       }
                     />
                   </div>
@@ -256,9 +254,9 @@ export function LightControl({
                       min={0}
                       max={255}
                       className="w-16 text-center"
-                      value={state.color?.g ?? 0}
+                      value={localColor.g}
                       onChange={(e) =>
-                        handleRgbChange("g", parseInt(e.target.value))
+                        handleRgbInputChange("g", parseInt(e.target.value))
                       }
                     />
                   </div>
@@ -272,52 +270,13 @@ export function LightControl({
                       min={0}
                       max={255}
                       className="w-16 text-center"
-                      value={state.color?.b ?? 0}
+                      value={localColor.b}
                       onChange={(e) =>
-                        handleRgbChange("b", parseInt(e.target.value))
+                        handleRgbInputChange("b", parseInt(e.target.value))
                       }
                     />
                   </div>
-                </div>
-
-                <div className="flex space-x-2 mt-4 items-end">
-                    <div className="flex flex-col items-center">
-                        <Label htmlFor="hue" className="mb-1 text-xs">Hue</Label>
-                        <Input
-                            id="hue"
-                            type="number"
-                            min={0}
-                            max={360}
-                            className="w-16 text-center"
-                            value={hue}
-                            onChange={(e) => setHue(parseInt(e.target.value))}
-                        />
-                    </div>
-                    <div className="flex flex-col items-center">
-                        <Label htmlFor="sat" className="mb-1 text-xs">Sat</Label>
-                        <Input
-                            id="sat"
-                            type="number"
-                            min={0}
-                            max={100}
-                            className="w-16 text-center"
-                            value={sat}
-                            onChange={(e) => setSat(parseInt(e.target.value))}
-                        />
-                    </div>
-                    <div className="flex flex-col items-center">
-                        <Label htmlFor="val" className="mb-1 text-xs">Val</Label>
-                        <Input
-                            id="val"
-                            type="number"
-                            min={0}
-                            max={100}
-                            className="w-16 text-center"
-                            value={val}
-                            onChange={(e) => setVal(parseInt(e.target.value))}
-                        />
-                    </div>
-                    <Button size="sm" onClick={handleInternalColorSubmit}>Set</Button>
+                   <Button size="sm" onClick={handleRgbSubmit}>Set</Button>
                 </div>
 
                 <div className="flex flex-col items-center mt-4 w-full">

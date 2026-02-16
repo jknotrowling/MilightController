@@ -521,6 +521,8 @@ void setup() {
       ESP.restart();
   });
 
+  pinMode(0, INPUT_PULLUP);
+
   if (wifiManager->autoConnect(ssid.c_str(), "milightHub")) {
     // set LED mode for successful operation
     ledStatus->continuous(settings.ledModeOperating);
