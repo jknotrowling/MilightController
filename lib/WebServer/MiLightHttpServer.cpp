@@ -73,6 +73,11 @@ void MiLightHttpServer::begin() {
     .on(HTTP_GET, std::bind(&MiLightHttpServer::handleGetGroup, this, _1));
 
   server
+    .buildHandler("/gateways/:device_id/:type/:group_id/default_color")
+    .on(HTTP_PUT, std::bind(&MiLightHttpServer::handleSaveDefaultColor, this, _1))
+    .on(HTTP_POST, std::bind(&MiLightHttpServer::handleSaveDefaultColor, this, _1));
+
+  server
     .buildHandler("/gateways/:device_alias")
     .on(HTTP_PUT, std::bind(&MiLightHttpServer::handleUpdateGroupAlias, this, _1))
     .on(HTTP_POST, std::bind(&MiLightHttpServer::handleUpdateGroupAlias, this, _1))
@@ -940,6 +945,40 @@ void MiLightHttpServer::handleDeleteAliases(RequestContext &request) {
   if (this->settingsSavedHandler) {
     this->settingsSavedHandler();
   }
+
+  request.response.json[F("success")] = true;
+}
+
+void MiLightHttpServer::handleSaveDefaultColor(RequestContext& request) {
+  JsonObject body = request.getJsonBody().as<JsonObject>();
+
+  if (!body.containsKey("color")) {
+    request.response.setCode(400);
+    request.response.json[F("error")] = F("Missing color object");
+    return;
+  }
+
+  JsonObject color = body["color"];
+
+  if (!color.containsKey("r") || !color.containsKey("g") || !color.containsKey("b")) {
+    request.response.setCode(400);
+    request.response.json[F("error")] = F("Invalid color format (r, g, b required)");
+    return;
+  }
+
+  uint8_t r = color["r"];
+  uint8_t g = color["g"];
+  uint8_t b = color["b"];
+  uint32_t packedColor = (r << 16) | (g << 8) | b;
+
+  String deviceId = request.pathVariables.get(GroupStateFieldNames::DEVICE_ID);
+  String deviceType = request.pathVariables.get("type");
+  String groupId = request.pathVariables.get(GroupStateFieldNames::GROUP_ID);
+
+  String key = deviceType + ":" + deviceId + ":" + groupId;
+
+  settings.groupDefaultColors[key] = packedColor;
+  saveSettings();
 
   request.response.json[F("success")] = true;
 }

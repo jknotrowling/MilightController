@@ -104,6 +104,7 @@ export function LightCard({
           capabilities={RemoteTypeCapabilities[id.device_type]}
           updateState={updateState}
           deviceType={id.device_type}
+          id={id}
         />
       </CardContent>
     </Card>

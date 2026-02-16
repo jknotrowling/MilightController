@@ -12,6 +12,8 @@ import { z } from "zod";
 import { schemas } from "@/api/api-zod";
 import { getGroupCountForRemoteType } from "@/lib/utils";
 
+import { api } from "@/lib/api";
+
 interface LightControlProps {
   state: z.infer<typeof schemas.NormalizedGroupState>;
   capabilities: typeof RemoteTypeCapabilities[keyof typeof RemoteTypeCapabilities];
@@ -19,6 +21,7 @@ interface LightControlProps {
   deviceType?: z.infer<typeof schemas.RemoteType>;
   onGroupChange?: (groupId: number) => void;
   currentGroupId?: number;
+  id?: z.infer<typeof schemas.BulbId>;
 }
 
 export function LightControl({
@@ -28,6 +31,7 @@ export function LightControl({
   deviceType,
   onGroupChange,
   currentGroupId,
+  id,
 }: LightControlProps) {
   const handleBrightnessChange = (value: number[]) => {
     updateState({ level: value[0] });
@@ -63,16 +67,46 @@ export function LightControl({
     updateState({ color_mode: schemas.ColorMode.Values.rgb });
   };
 
-  const handleRgbChange = (channel: "r" | "g" | "b", value: number) => {
+  const [hsb, setHsb] = React.useState({ h: 0, s: 0, v: 0 });
+
+  useEffect(() => {
+    if (state.color) {
+      const hsva = rgbaToHsva({ ...state.color, a: 1 });
+      setHsb({ h: hsva.h, s: hsva.s, v: hsva.v });
+    }
+  }, [state.color]);
+
+  const handleHsbChange = (channel: "h" | "s" | "v", value: number) => {
     if (isNaN(value)) value = 0;
-    const clampedValue = Math.max(0, Math.min(255, value));
+    let clampedValue = value;
+    if (channel === "h") clampedValue = Math.max(0, Math.min(360, value));
+    else clampedValue = Math.max(0, Math.min(100, value));
 
-    const currentColor = state.color || { r: 0, g: 0, b: 0 };
+    setHsb(prev => ({ ...prev, [channel]: clampedValue }));
+  };
 
+  const handleSetColor = () => {
+    const rgba = hsvaToRgba({ ...hsb, a: 1 });
     updateState({
-      color: { ...currentColor, [channel]: clampedValue },
+      color: { r: rgba.r, g: rgba.g, b: rgba.b },
     });
     updateState({ color_mode: schemas.ColorMode.Values.rgb });
+  };
+
+  const handleSaveDefault = async () => {
+    if (!id) return;
+    const rgba = hsvaToRgba({ ...hsb, a: 1 });
+    try {
+      await api.saveDefaultColor({ color: { r: rgba.r, g: rgba.g, b: rgba.b } }, {
+        params: {
+          deviceId: id.device_id,
+          remoteType: id.device_type,
+          groupId: id.group_id
+        }
+      });
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const sendCommand = (command: z.infer<typeof schemas.GroupStateCommand>) => {
@@ -163,53 +197,57 @@ export function LightControl({
                 </div>
                 <div className="flex space-x-2 mt-4">
                   <div className="flex flex-col items-center">
-                    <Label htmlFor="r" className="mb-1 text-xs">
-                      R
+                    <Label htmlFor="h" className="mb-1 text-xs">
+                      H
                     </Label>
                     <Input
-                      id="r"
+                      id="h"
                       type="number"
                       min={0}
-                      max={255}
+                      max={360}
                       className="w-16 text-center"
-                      value={state.color?.r ?? 0}
+                      value={hsb.h}
                       onChange={(e) =>
-                        handleRgbChange("r", parseInt(e.target.value))
+                        handleHsbChange("h", parseInt(e.target.value))
                       }
                     />
                   </div>
                   <div className="flex flex-col items-center">
-                    <Label htmlFor="g" className="mb-1 text-xs">
-                      G
+                    <Label htmlFor="s" className="mb-1 text-xs">
+                      S
                     </Label>
                     <Input
-                      id="g"
+                      id="s"
                       type="number"
                       min={0}
-                      max={255}
+                      max={100}
                       className="w-16 text-center"
-                      value={state.color?.g ?? 0}
+                      value={hsb.s}
                       onChange={(e) =>
-                        handleRgbChange("g", parseInt(e.target.value))
+                        handleHsbChange("s", parseInt(e.target.value))
                       }
                     />
                   </div>
                   <div className="flex flex-col items-center">
-                    <Label htmlFor="b" className="mb-1 text-xs">
+                    <Label htmlFor="v" className="mb-1 text-xs">
                       B
                     </Label>
                     <Input
-                      id="b"
+                      id="v"
                       type="number"
                       min={0}
-                      max={255}
+                      max={100}
                       className="w-16 text-center"
-                      value={state.color?.b ?? 0}
+                      value={hsb.v}
                       onChange={(e) =>
-                        handleRgbChange("b", parseInt(e.target.value))
+                        handleHsbChange("v", parseInt(e.target.value))
                       }
                     />
                   </div>
+                </div>
+                <div className="flex space-x-2 mt-4">
+                  <Button size="sm" onClick={handleSetColor}>Set</Button>
+                  {id && <Button size="sm" variant="outline" onClick={handleSaveDefault}>Save Default</Button>}
                 </div>
               </div>
             </div>
