@@ -178,6 +178,13 @@ void Settings::patch(JsonObject parsedSettings) {
   if (parsedSettings.containsKey(FPSTR(SettingsKeys::GROUP_ID_ALIASES))) {
     parseGroupIdAliases(parsedSettings);
   }
+
+  if (parsedSettings.containsKey(FPSTR(SettingsKeys::GROUP_DEFAULT_COLORS))) {
+    JsonObject colors = parsedSettings[FPSTR(SettingsKeys::GROUP_DEFAULT_COLORS)];
+    for (JsonPair kv : colors) {
+      groupDefaultColors[kv.key().c_str()] = kv.value().as<uint32_t>();
+    }
+  }
 }
 
 std::map<String, GroupAlias>::const_iterator Settings::findAlias(MiLightRemoteType deviceType, uint16_t deviceId, uint8_t groupId) {
@@ -396,6 +403,11 @@ void Settings::serialize(Print& stream, const bool prettyPrint) const {
     if (ignoredListenProtocols & (1 << i)) {
       ignoredProtocolsArr.add(ListenProtocolHelpers::nameFromIndex(i));
     }
+  }
+
+  JsonObject defaultColorsObj = root.createNestedObject(FPSTR(SettingsKeys::GROUP_DEFAULT_COLORS));
+  for (auto const& [key, val] : groupDefaultColors) {
+    defaultColorsObj[key] = val;
   }
 
   if (prettyPrint) {

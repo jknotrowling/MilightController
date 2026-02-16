@@ -147,6 +147,7 @@ namespace SettingsKeys {
   static const char DEFAULT_REMOTE_ID[] PROGMEM = "default_remote_id";
   static const char DEFAULT_REMOTE_TYPE[] PROGMEM = "default_remote_type";
   static const char DEFAULT_REMOTE_GROUP_ID[] PROGMEM = "default_remote_group_id";
+  static const char GROUP_DEFAULT_COLORS[] PROGMEM = "group_default_colors";
 }
 
 class Settings {
@@ -284,6 +285,8 @@ public:
   uint16_t defaultRemoteDeviceId;
   MiLightRemoteType defaultRemoteDeviceType;
   uint8_t defaultRemoteGroupId;
+
+  std::map<String, uint32_t> groupDefaultColors;
 
   static WifiMode wifiModeFromString(const String& mode);
   static String wifiModeToString(WifiMode mode);

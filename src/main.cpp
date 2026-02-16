@@ -543,23 +543,31 @@ size_t i = 0;
 void handleButton() {
   if (digitalRead(FLASH_BUTTON_PIN) == LOW) {
     if (millis() - lastButtonPress > 500) { // Debounce 500ms
-      Serial.println(F("Flash button pressed - sending default teal color"));
+      Serial.println(F("Flash button pressed - sending default colors to all groups"));
 
-      StaticJsonDocument<200> buffer;
-      buffer["color"]["r"] = 27;
-      buffer["color"]["g"] = 150;
-      buffer["color"]["b"] = 129;
+      for (auto const& [alias, group] : settings.groupIdAliases) {
+        String key = MiLightRemoteTypeHelpers::remoteTypeToString(group.bulbId.deviceType) + ":" + String(group.bulbId.deviceId) + ":" + String(group.bulbId.groupId);
 
-      if (milightClient) {
-        milightClient->prepare(settings.defaultRemoteDeviceType, settings.defaultRemoteDeviceId, settings.defaultRemoteGroupId);
-        milightClient->update(buffer.as<JsonObject>());
+        if (settings.groupDefaultColors.count(key)) {
+           uint32_t color = settings.groupDefaultColors[key];
+           uint8_t r = (color >> 16) & 0xFF;
+           uint8_t g = (color >> 8) & 0xFF;
+           uint8_t b = color & 0xFF;
+
+           StaticJsonDocument<200> buffer;
+           buffer["color"]["r"] = r;
+           buffer["color"]["g"] = g;
+           buffer["color"]["b"] = b;
+
+           if (milightClient) {
+             milightClient->prepare(group.bulbId.deviceType, group.bulbId.deviceId, group.bulbId.groupId);
+             milightClient->update(buffer.as<JsonObject>());
+           }
+        }
       }
 
       lastButtonPress = millis();
     }
-  } else {
-    // Reset timer if button released, though debouncing above handles basic repeats.
-    // If we want to allow rapid clicks but prevent bounce, the above is simple enough.
   }
 }
 
