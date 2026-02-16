@@ -180,6 +180,7 @@ void Settings::patch(JsonObject parsedSettings) {
   }
 
   if (parsedSettings.containsKey(FPSTR(SettingsKeys::GROUP_DEFAULT_COLORS))) {
+    groupDefaultColors.clear();
     JsonObject colors = parsedSettings[FPSTR(SettingsKeys::GROUP_DEFAULT_COLORS)];
     for (JsonPair kv : colors) {
       groupDefaultColors[kv.key().c_str()] = kv.value().as<uint32_t>();

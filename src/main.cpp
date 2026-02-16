@@ -545,11 +545,20 @@ void handleButton() {
     if (millis() - lastButtonPress > 500) { // Debounce 500ms
       Serial.println(F("Flash button pressed - sending default colors to all groups"));
 
-      for (auto const& [alias, group] : settings.groupIdAliases) {
-        String key = MiLightRemoteTypeHelpers::remoteTypeToString(group.bulbId.deviceType) + ":" + String(group.bulbId.deviceId) + ":" + String(group.bulbId.groupId);
+      for (auto const& [key, color] : settings.groupDefaultColors) {
+           int firstColon = key.indexOf(':');
+           int secondColon = key.lastIndexOf(':');
 
-        if (settings.groupDefaultColors.count(key)) {
-           uint32_t color = settings.groupDefaultColors[key];
+           if (firstColon == -1 || secondColon == -1 || firstColon == secondColon) continue;
+
+           String typeStr = key.substring(0, firstColon);
+           String idStr = key.substring(firstColon + 1, secondColon);
+           String groupStr = key.substring(secondColon + 1);
+
+           MiLightRemoteType type = MiLightRemoteTypeHelpers::remoteTypeFromString(typeStr);
+           uint16_t deviceId = atoi(idStr.c_str());
+           uint8_t groupId = atoi(groupStr.c_str());
+
            uint8_t r = (color >> 16) & 0xFF;
            uint8_t g = (color >> 8) & 0xFF;
            uint8_t b = color & 0xFF;
@@ -560,10 +569,9 @@ void handleButton() {
            buffer["color"]["b"] = b;
 
            if (milightClient) {
-             milightClient->prepare(group.bulbId.deviceType, group.bulbId.deviceId, group.bulbId.groupId);
+             milightClient->prepare(type, deviceId, groupId);
              milightClient->update(buffer.as<JsonObject>());
            }
-        }
       }
 
       lastButtonPress = millis();
