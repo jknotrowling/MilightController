@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { RemoteTypeCapabilities } from "./remote-data";
 import { z } from "zod";
 import { schemas } from "@/api/api-zod";
 import { getGroupCountForRemoteType } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 interface LightControlProps {
   state: z.infer<typeof schemas.NormalizedGroupState>;
@@ -19,6 +20,7 @@ interface LightControlProps {
   deviceType?: z.infer<typeof schemas.RemoteType>;
   onGroupChange?: (groupId: number) => void;
   currentGroupId?: number;
+  bulbId?: z.infer<typeof schemas.BulbId>;
 }
 
 export function LightControl({
@@ -28,15 +30,16 @@ export function LightControl({
   deviceType,
   onGroupChange,
   currentGroupId,
+  bulbId,
 }: LightControlProps) {
-  const handleBrightnessChange = (value: number[]) => {
-    updateState({ level: value[0] });
-  };
+  const [settings, setSettings] = useState<z.infer<typeof schemas.Settings> | null>(null);
 
-  const handleColorTempChange = (value: number[]) => {
-    updateState({ kelvin: value[0] });
-    updateState({ color_mode: schemas.ColorMode.Values.color_temp });
-  };
+  // Local state for RGB inputs
+  const [localColor, setLocalColor] = useState({ r: 0, g: 0, b: 0 });
+
+  useEffect(() => {
+    api.getSettings().then(setSettings);
+  }, []);
 
   const isInteracting = useRef(false);
 
@@ -52,27 +55,89 @@ export function LightControl({
     };
   }, []);
 
+  // Sync local color with state color when not interacting
+  useEffect(() => {
+    if (!isInteracting.current && state.color) {
+      setLocalColor({
+        r: state.color.r || 0,
+        g: state.color.g || 0,
+        b: state.color.b || 0,
+      });
+    }
+  }, [state.color]);
+
+  const handleBrightnessChange = (value: number[]) => {
+    updateState({ level: value[0] });
+  };
+
+  const handleColorTempChange = (value: number[]) => {
+    updateState({ kelvin: value[0] });
+    updateState({ color_mode: schemas.ColorMode.Values.color_temp });
+  };
+
   const handleColorChange = (color: {
     hsva: { h: number; s: number; v: number; a: number };
   }) => {
     if (!isInteracting.current) return;
     const rgba = hsvaToRgba(color.hsva);
+    const newColor = { r: rgba.r, g: rgba.g, b: rgba.b };
+    setLocalColor(newColor); // Update local inputs
     updateState({
-      color: { r: rgba.r, g: rgba.g, b: rgba.b },
+      color: newColor,
     });
     updateState({ color_mode: schemas.ColorMode.Values.rgb });
   };
 
-  const handleRgbChange = (channel: "r" | "g" | "b", value: number) => {
+  const handleRgbInputChange = (channel: "r" | "g" | "b", value: number) => {
     if (isNaN(value)) value = 0;
     const clampedValue = Math.max(0, Math.min(255, value));
+    setLocalColor((prev) => ({ ...prev, [channel]: clampedValue }));
+  };
 
-    const currentColor = state.color || { r: 0, g: 0, b: 0 };
-
+  const handleRgbSubmit = () => {
     updateState({
-      color: { ...currentColor, [channel]: clampedValue },
+      color: localColor,
     });
     updateState({ color_mode: schemas.ColorMode.Values.rgb });
+  };
+
+  const saveDefaultColor = async () => {
+    if (!bulbId || !state.color || !settings) return;
+    const key = `${bulbId.device_type}:${bulbId.device_id}:${bulbId.group_id}`;
+    const packedColor = (state.color.r << 16) | (state.color.g << 8) | state.color.b;
+
+    const newGroupDefaultColors = {
+        ...settings.group_default_colors,
+        [key]: packedColor
+    };
+
+    setSettings({ ...settings, group_default_colors: newGroupDefaultColors });
+
+    await api.putSettings({ group_default_colors: newGroupDefaultColors });
+  };
+
+  const setToDefaultColor = () => {
+     if (!bulbId || !settings?.group_default_colors) return;
+     const key = `${bulbId.device_type}:${bulbId.device_id}:${bulbId.group_id}`;
+     const packedColor = settings.group_default_colors[key];
+     if (packedColor !== undefined) {
+        const r = (packedColor >> 16) & 0xFF;
+        const g = (packedColor >> 8) & 0xFF;
+        const b = packedColor & 0xFF;
+        updateState({ color: { r, g, b } });
+        updateState({ color_mode: schemas.ColorMode.Values.rgb });
+     }
+  };
+
+  const getDefaultColorText = () => {
+      if (!bulbId || !settings?.group_default_colors) return "None";
+      const key = `${bulbId.device_type}:${bulbId.device_id}:${bulbId.group_id}`;
+      const packedColor = settings.group_default_colors[key];
+      if (packedColor === undefined) return "None";
+      const r = (packedColor >> 16) & 0xFF;
+      const g = (packedColor >> 8) & 0xFF;
+      const b = packedColor & 0xFF;
+      return `RGB(${r}, ${g}, ${b})`;
   };
 
   const sendCommand = (command: z.infer<typeof schemas.GroupStateCommand>) => {
@@ -161,7 +226,8 @@ export function LightControl({
                     onChange={handleColorChange}
                   />
                 </div>
-                <div className="flex space-x-2 mt-4">
+
+                <div className="flex space-x-2 mt-4 items-end">
                   <div className="flex flex-col items-center">
                     <Label htmlFor="r" className="mb-1 text-xs">
                       R
@@ -172,9 +238,9 @@ export function LightControl({
                       min={0}
                       max={255}
                       className="w-16 text-center"
-                      value={state.color?.r ?? 0}
+                      value={localColor.r}
                       onChange={(e) =>
-                        handleRgbChange("r", parseInt(e.target.value))
+                        handleRgbInputChange("r", parseInt(e.target.value))
                       }
                     />
                   </div>
@@ -188,9 +254,9 @@ export function LightControl({
                       min={0}
                       max={255}
                       className="w-16 text-center"
-                      value={state.color?.g ?? 0}
+                      value={localColor.g}
                       onChange={(e) =>
-                        handleRgbChange("g", parseInt(e.target.value))
+                        handleRgbInputChange("g", parseInt(e.target.value))
                       }
                     />
                   </div>
@@ -204,13 +270,25 @@ export function LightControl({
                       min={0}
                       max={255}
                       className="w-16 text-center"
-                      value={state.color?.b ?? 0}
+                      value={localColor.b}
                       onChange={(e) =>
-                        handleRgbChange("b", parseInt(e.target.value))
+                        handleRgbInputChange("b", parseInt(e.target.value))
                       }
                     />
                   </div>
+                   <Button size="sm" onClick={handleRgbSubmit}>Set</Button>
                 </div>
+
+                <div className="flex flex-col items-center mt-4 w-full">
+                    <div className="text-sm text-muted-foreground mb-2">
+                        Default: {getDefaultColorText()}
+                    </div>
+                    <div className="flex space-x-2">
+                        <Button size="sm" variant="outline" onClick={saveDefaultColor}>Save as Default</Button>
+                        <Button size="sm" variant="outline" onClick={setToDefaultColor}>Set to Default</Button>
+                    </div>
+                </div>
+
               </div>
             </div>
           )}
@@ -305,4 +383,4 @@ export function LightControl({
       )}
     </div>
   );
-} 
+}

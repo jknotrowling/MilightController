@@ -521,6 +521,8 @@ void setup() {
       ESP.restart();
   });
 
+  pinMode(0, INPUT_PULLUP);
+
   if (wifiManager->autoConnect(ssid.c_str(), "milightHub")) {
     // set LED mode for successful operation
     ledStatus->continuous(settings.ledModeOperating);
@@ -534,8 +536,58 @@ void setup() {
 }
 
 size_t i = 0;
+unsigned long lastButtonPress = 0;
+bool buttonState = false;
+
+void handleButtonPress() {
+  if (!milightClient) return;
+
+  Serial.println(F("Button pressed! Applying default colors..."));
+
+  for (auto const& [key, color] : settings.groupDefaultColors) {
+    int firstColon = key.indexOf(':');
+    int secondColon = key.lastIndexOf(':');
+
+    if (firstColon == -1 || secondColon == -1 || firstColon == secondColon) continue;
+
+    String deviceTypeStr = key.substring(0, firstColon);
+    String deviceIdStr = key.substring(firstColon + 1, secondColon);
+    String groupIdStr = key.substring(secondColon + 1);
+
+    const MiLightRemoteConfig* config = MiLightRemoteConfig::fromType(deviceTypeStr);
+    if (!config) continue;
+
+    uint16_t deviceId = atoi(deviceIdStr.c_str());
+    uint8_t groupId = atoi(groupIdStr.c_str());
+
+    uint8_t r = (color >> 16) & 0xFF;
+    uint8_t g = (color >> 8) & 0xFF;
+    uint8_t b = color & 0xFF;
+
+    Serial.printf_P(PSTR("Setting color for %s:%d:%d to RGB(%d,%d,%d)\n"),
+      deviceTypeStr.c_str(), deviceId, groupId, r, g, b);
+
+    milightClient->prepare(config, deviceId, groupId);
+
+    StaticJsonDocument<200> doc;
+    JsonObject colorObj = doc.createNestedObject("color");
+    colorObj["r"] = r;
+    colorObj["g"] = g;
+    colorObj["b"] = b;
+
+    milightClient->update(doc.as<JsonObject>());
+  }
+}
 
 void loop() {
+  // Button handling (GPIO0 is usually Flash button, active low)
+  bool currentButtonState = digitalRead(0) == LOW;
+  if (currentButtonState && !buttonState && (millis() - lastButtonPress > 200)) {
+     lastButtonPress = millis();
+     handleButtonPress();
+  }
+  buttonState = currentButtonState;
+
   // update LED with status
   ledStatus->handle();
 
