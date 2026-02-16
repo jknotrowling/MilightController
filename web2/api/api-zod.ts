@@ -533,6 +533,8 @@ const Settings = z
 
 Keys are aliases, values are 3-long arrays with same schema as items in 'device_ids'.
 `),
+    group_default_colors: z.record(z.string(), z.number().int()).optional()
+      .describe(`Map of device_type:device_id:group_id to packed RGB integer color.`),
     default_transition_period: z.number().int()
       .describe(`Default number of milliseconds between transition packets.  Set this value lower for more granular transitions, or higher if
 you are having performance issues during transitions.

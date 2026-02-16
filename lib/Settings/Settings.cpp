@@ -166,6 +166,13 @@ void Settings::patch(JsonObject parsedSettings) {
     }
   }
 
+  if (parsedSettings.containsKey(FPSTR(SettingsKeys::GROUP_DEFAULT_COLORS))) {
+    JsonObject groupColors = parsedSettings[FPSTR(SettingsKeys::GROUP_DEFAULT_COLORS)];
+    for (JsonPair kv : groupColors) {
+      groupDefaultColors[kv.key().c_str()] = kv.value().as<uint32_t>();
+    }
+  }
+
   // this key will only be present in old settings files, but for backwards
   // compatability, parse it if it's present.
   if (parsedSettings.containsKey(FPSTR(SettingsKeys::GROUP_ID_ALIASES))) {
@@ -386,6 +393,11 @@ void Settings::serialize(Print& stream, const bool prettyPrint) const {
     if (ignoredListenProtocols & (1 << i)) {
       ignoredProtocolsArr.add(ListenProtocolHelpers::nameFromIndex(i));
     }
+  }
+
+  JsonObject groupColorsObj = root.createNestedObject(FPSTR(SettingsKeys::GROUP_DEFAULT_COLORS));
+  for (auto it = groupDefaultColors.begin(); it != groupDefaultColors.end(); ++it) {
+    groupColorsObj[it->first] = it->second;
   }
 
   if (prettyPrint) {

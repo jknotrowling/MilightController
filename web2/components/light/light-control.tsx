@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { RemoteTypeCapabilities } from "./remote-data";
 import { z } from "zod";
 import { schemas } from "@/api/api-zod";
 import { getGroupCountForRemoteType } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 interface LightControlProps {
   state: z.infer<typeof schemas.NormalizedGroupState>;
@@ -19,6 +20,7 @@ interface LightControlProps {
   deviceType?: z.infer<typeof schemas.RemoteType>;
   onGroupChange?: (groupId: number) => void;
   currentGroupId?: number;
+  bulbId?: z.infer<typeof schemas.BulbId>;
 }
 
 export function LightControl({
@@ -28,7 +30,17 @@ export function LightControl({
   deviceType,
   onGroupChange,
   currentGroupId,
+  bulbId,
 }: LightControlProps) {
+  const [settings, setSettings] = useState<z.infer<typeof schemas.Settings> | null>(null);
+  const [hue, setHue] = useState(0);
+  const [sat, setSat] = useState(0);
+  const [val, setVal] = useState(0);
+
+  useEffect(() => {
+    api.getSettings().then(setSettings);
+  }, []);
+
   const handleBrightnessChange = (value: number[]) => {
     updateState({ level: value[0] });
   };
@@ -52,6 +64,15 @@ export function LightControl({
     };
   }, []);
 
+  useEffect(() => {
+    if (!isInteracting.current && state.color) {
+      const hsva = rgbaToHsva({ ...state.color, a: 1 });
+      setHue(Math.round(hsva.h));
+      setSat(Math.round(hsva.s));
+      setVal(Math.round(hsva.v));
+    }
+  }, [state.color]);
+
   const handleColorChange = (color: {
     hsva: { h: number; s: number; v: number; a: number };
   }) => {
@@ -73,6 +94,53 @@ export function LightControl({
       color: { ...currentColor, [channel]: clampedValue },
     });
     updateState({ color_mode: schemas.ColorMode.Values.rgb });
+  };
+
+  const handleInternalColorSubmit = () => {
+    const rgba = hsvaToRgba({ h: hue, s: sat, v: val, a: 1 });
+    updateState({
+      color: { r: rgba.r, g: rgba.g, b: rgba.b },
+    });
+    updateState({ color_mode: schemas.ColorMode.Values.rgb });
+  };
+
+  const saveDefaultColor = async () => {
+    if (!bulbId || !state.color || !settings) return;
+    const key = `${bulbId.device_type}:${bulbId.device_id}:${bulbId.group_id}`;
+    const packedColor = (state.color.r << 16) | (state.color.g << 8) | state.color.b;
+
+    const newGroupDefaultColors = {
+        ...settings.group_default_colors,
+        [key]: packedColor
+    };
+
+    setSettings({ ...settings, group_default_colors: newGroupDefaultColors });
+
+    await api.putSettings({ group_default_colors: newGroupDefaultColors });
+  };
+
+  const setToDefaultColor = () => {
+     if (!bulbId || !settings?.group_default_colors) return;
+     const key = `${bulbId.device_type}:${bulbId.device_id}:${bulbId.group_id}`;
+     const packedColor = settings.group_default_colors[key];
+     if (packedColor !== undefined) {
+        const r = (packedColor >> 16) & 0xFF;
+        const g = (packedColor >> 8) & 0xFF;
+        const b = packedColor & 0xFF;
+        updateState({ color: { r, g, b } });
+        updateState({ color_mode: schemas.ColorMode.Values.rgb });
+     }
+  };
+
+  const getDefaultColorText = () => {
+      if (!bulbId || !settings?.group_default_colors) return "None";
+      const key = `${bulbId.device_type}:${bulbId.device_id}:${bulbId.group_id}`;
+      const packedColor = settings.group_default_colors[key];
+      if (packedColor === undefined) return "None";
+      const r = (packedColor >> 16) & 0xFF;
+      const g = (packedColor >> 8) & 0xFF;
+      const b = packedColor & 0xFF;
+      return `RGB(${r}, ${g}, ${b})`;
   };
 
   const sendCommand = (command: z.infer<typeof schemas.GroupStateCommand>) => {
@@ -211,6 +279,57 @@ export function LightControl({
                     />
                   </div>
                 </div>
+
+                <div className="flex space-x-2 mt-4 items-end">
+                    <div className="flex flex-col items-center">
+                        <Label htmlFor="hue" className="mb-1 text-xs">Hue</Label>
+                        <Input
+                            id="hue"
+                            type="number"
+                            min={0}
+                            max={360}
+                            className="w-16 text-center"
+                            value={hue}
+                            onChange={(e) => setHue(parseInt(e.target.value))}
+                        />
+                    </div>
+                    <div className="flex flex-col items-center">
+                        <Label htmlFor="sat" className="mb-1 text-xs">Sat</Label>
+                        <Input
+                            id="sat"
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="w-16 text-center"
+                            value={sat}
+                            onChange={(e) => setSat(parseInt(e.target.value))}
+                        />
+                    </div>
+                    <div className="flex flex-col items-center">
+                        <Label htmlFor="val" className="mb-1 text-xs">Val</Label>
+                        <Input
+                            id="val"
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="w-16 text-center"
+                            value={val}
+                            onChange={(e) => setVal(parseInt(e.target.value))}
+                        />
+                    </div>
+                    <Button size="sm" onClick={handleInternalColorSubmit}>Set</Button>
+                </div>
+
+                <div className="flex flex-col items-center mt-4 w-full">
+                    <div className="text-sm text-muted-foreground mb-2">
+                        Default: {getDefaultColorText()}
+                    </div>
+                    <div className="flex space-x-2">
+                        <Button size="sm" variant="outline" onClick={saveDefaultColor}>Save as Default</Button>
+                        <Button size="sm" variant="outline" onClick={setToDefaultColor}>Set to Default</Button>
+                    </div>
+                </div>
+
               </div>
             </div>
           )}
@@ -305,4 +424,4 @@ export function LightControl({
       )}
     </div>
   );
-} 
+}

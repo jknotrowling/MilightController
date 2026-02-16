@@ -144,6 +144,7 @@ namespace SettingsKeys {
   static const char GROUP_STATE_FIELDS[] PROGMEM = "group_state_fields";
   static const char GROUP_ID_ALIASES[] PROGMEM = "group_id_aliases";
   static const char IGNORED_LISTEN_PROTOCOLS[] PROGMEM = "ignored_listen_protocols";
+  static const char GROUP_DEFAULT_COLORS[] PROGMEM = "group_default_colors";
 }
 
 class Settings {
@@ -266,6 +267,7 @@ public:
   String wifiStaticIPGateway;
   size_t packetRepeatsPerLoop;
   std::map<String, GroupAlias> groupIdAliases;
+  std::map<String, uint32_t> groupDefaultColors;
   std::map<uint32_t, BulbId> deletedGroupIdAliases;
   String homeAssistantDiscoveryPrefix;
   WifiMode wifiMode;
