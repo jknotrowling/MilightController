@@ -20,7 +20,7 @@
 #define _SETTINGS_H_INCLUDED
 
 #ifndef MILIGHT_HUB_SETTINGS_BUFFER_SIZE
-#define MILIGHT_HUB_SETTINGS_BUFFER_SIZE 4096
+#define MILIGHT_HUB_SETTINGS_BUFFER_SIZE 8192
 #endif
 
 #define XQUOTE(x) #x
@@ -144,6 +144,7 @@ namespace SettingsKeys {
   static const char GROUP_STATE_FIELDS[] PROGMEM = "group_state_fields";
   static const char GROUP_ID_ALIASES[] PROGMEM = "group_id_aliases";
   static const char IGNORED_LISTEN_PROTOCOLS[] PROGMEM = "ignored_listen_protocols";
+  static const char GROUP_DEFAULT_COLORS[] PROGMEM = "group_default_colors";
 }
 
 class Settings {
@@ -267,6 +268,7 @@ public:
   size_t packetRepeatsPerLoop;
   std::map<String, GroupAlias> groupIdAliases;
   std::map<uint32_t, BulbId> deletedGroupIdAliases;
+  std::map<String, uint32_t> groupDefaultColors;
   String homeAssistantDiscoveryPrefix;
   WifiMode wifiMode;
   uint16_t defaultTransitionPeriod;

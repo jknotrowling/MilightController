@@ -39,6 +39,7 @@ function ManualLightCard({
       state={state}
       capabilities={RemoteTypeCapabilities[bulbId.device_type]}
       updateState={updateState}
+      id={bulbId}
     />
   );
 }

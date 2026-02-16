@@ -761,6 +761,41 @@ const endpoints = makeApi([
     ],
   },
   {
+    method: "put",
+    path: "/gateways/:deviceId/:remoteType/:groupId/default_color",
+    alias: "saveDefaultColor",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({
+          color: z.object({
+            r: z.number().int(),
+            g: z.number().int(),
+            b: z.number().int(),
+          }),
+        }),
+      },
+      {
+        name: "deviceId",
+        type: "Path",
+        schema: device_id,
+      },
+      {
+        name: "remoteType",
+        type: "Path",
+        schema: RemoteType,
+      },
+      {
+        name: "groupId",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: BooleanResponse,
+  },
+  {
     method: "get",
     path: "/backup",
     alias: "getBackup",
